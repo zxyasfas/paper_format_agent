@@ -1,0 +1,686 @@
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from docx import Document
+from docx.enum.style import WD_STYLE_TYPE
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
+
+from paper_format_agent.ooxml import set_font_east_asia
+
+
+MARK_PREFIX = "PFA3_MARK_"
+
+T_EMPTY = "EMPTY"
+T_BODY = "BODY"
+T_TOC_TITLE = "TOC_TITLE"
+T_TOC_ENTRY = "TOC_ENTRY"
+T_ABS_ZH_TITLE = "ABS_ZH_TITLE"
+T_ABS_ZH_BODY = "ABS_ZH_BODY"
+T_KW_ZH = "KW_ZH"
+T_ABS_EN_TITLE = "ABS_EN_TITLE"
+T_ABS_EN_BODY = "ABS_EN_BODY"
+T_KW_EN = "KW_EN"
+T_H1 = "H1"
+T_H2 = "H2"
+T_H3 = "H3"
+T_REF_TITLE = "REF_TITLE"
+T_REF_ENTRY = "REF_ENTRY"
+T_ACK_TITLE = "ACK_TITLE"
+
+
+def normalize_text(text: str) -> str:
+    return re.sub(r"\s+", "", text or "")
+
+
+def is_abstract_title(text: str) -> bool:
+    return bool(re.fullmatch(r"摘\s*要", (text or "").strip()))
+
+
+def is_english_abstract_title(text: str) -> bool:
+    return (text or "").strip().upper() == "ABSTRACT"
+
+
+def is_keyword_zh(text: str) -> bool:
+    return bool(re.match(r"^(关键词|关键字)\s*[:：]", (text or "").strip()))
+
+
+def is_keyword_en(text: str) -> bool:
+    return bool(re.match(r"^Keywords?\s*[:：]", (text or "").strip(), flags=re.IGNORECASE))
+
+
+def is_toc_title(text: str) -> bool:
+    return normalize_text(text) in {"目录", "目錄", "目次"}
+
+
+def is_references(text: str) -> bool:
+    return "参考文献" in normalize_text(text)
+
+
+def is_ack(text: str) -> bool:
+    nt = normalize_text(text)
+    return "致谢" in nt or "致謝" in nt
+
+
+def is_intro_like(text: str) -> bool:
+    nt = normalize_text(text)
+    return "绪论" in nt or "引言" in nt
+
+
+def looks_like_reference_entry(text: str) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return False
+    if re.match(r"^\[\d+\]", t):
+        return True
+    if re.match(r"^\d+\s*[\.、)]", t):
+        return True
+    if "DOI" in t.upper():
+        return True
+    if "[J]" in t or "[M]" in t or "[D]" in t:
+        return True
+    return False
+
+
+def is_chapter(text: str) -> bool:
+    s = (text or "").strip()
+    return bool(re.match(r"^第[一二三四五六七八九十0-9]+章", s)) or bool(re.match(r"^[一二三四五六七八九十]+、", s))
+
+
+def is_section(text: str) -> bool:
+    s = (text or "").strip()
+    return bool(re.match(r"^\d+\.\d+\s*", s)) or bool(re.match(r"^第[一二三四五六七八九十]+节", s))
+
+
+def is_subsection(text: str) -> bool:
+    s = (text or "").strip()
+    return (
+        bool(re.match(r"^\d+\.\d+\.\d+\s*", s))
+        or bool(re.match(r"^\d+\.\s*", s))
+        or bool(re.match(r"^（[一二三四五六七八九十]+）", s))
+    )
+
+
+def looks_like_toc_entry(text: str) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return True
+    nt = normalize_text(t)
+    if re.search(r"[·\.…]{3,}\s*\d+\s*$", t):
+        return True
+    if bool(re.match(r"^[一二三四五六七八九十]+、", t)):
+        return True
+    if bool(re.match(r"^[（(][一二三四五六七八九十]+[）)]", t)):
+        return True
+    if bool(re.match(r"^\d+(\.\d+)*\s+", t)):
+        return True
+    if bool(re.match(r"^\d+\.(\d+\.)*\d*[^0-9\s]", t)):
+        return True
+    if bool(re.match(r"^第[一二三四五六七八九十0-9]+[章节]", t)):
+        return True
+    if len(nt) <= 40 and (is_chapter(t) or is_section(t) or is_subsection(t) or is_intro_like(t)):
+        return True
+    return False
+
+
+def clear_paragraph_numbering(paragraph) -> bool:
+    ppr = paragraph._p.get_or_add_pPr()
+    numpr = ppr.find(qn("w:numPr"))
+    if numpr is not None:
+        ppr.remove(numpr)
+        return True
+    return False
+
+
+def ensure_style(doc: Document, name: str, font: str, size_pt: float, bold: bool = False, alignment: str | None = None):
+    styles = doc.styles
+    try:
+        style = styles[name]
+    except KeyError:
+        style = styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+    style.font.name = font
+    style.font.size = Pt(size_pt)
+    style.font.bold = bold
+    rpr = style._element.get_or_add_rPr()
+    rfonts = rpr.rFonts
+    if rfonts is None:
+        from docx.oxml import OxmlElement
+
+        rfonts = OxmlElement("w:rFonts")
+        rpr.append(rfonts)
+    rfonts.set(qn("w:eastAsia"), font)
+    rfonts.set(qn("w:ascii"), font)
+    rfonts.set(qn("w:hAnsi"), font)
+    if alignment == "center":
+        style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    elif alignment == "left":
+        style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    elif alignment == "justify":
+        style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    return style
+
+
+def set_run_style(paragraph, font: str, size_pt: float, bold: bool | None = None):
+    if not paragraph.runs:
+        paragraph.add_run("")
+    for run in paragraph.runs:
+        run.font.name = font
+        set_font_east_asia(run, font)
+        run.font.size = Pt(size_pt)
+        if bold is not None:
+            run.bold = bold
+        run.font.color.rgb = RGBColor(0, 0, 0)
+
+
+def set_para_format(paragraph, *, align: str, line_spacing: float, indent_chars: int, space_before: int, space_after: int):
+    if align == "center":
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    elif align == "left":
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    else:
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    paragraph.paragraph_format.line_spacing = line_spacing
+    paragraph.paragraph_format.left_indent = Pt(0)
+    paragraph.paragraph_format.right_indent = Pt(0)
+    paragraph.paragraph_format.first_line_indent = Pt(12 * indent_chars)
+    paragraph.paragraph_format.space_before = Pt(space_before)
+    paragraph.paragraph_format.space_after = Pt(space_after)
+
+
+def setup_document_base(doc: Document, rules: dict):
+    normal = doc.styles["Normal"]
+    normal.font.name = rules["body"]["font"]
+    normal.font.size = Pt(rules["body"]["size_pt"])
+    rpr = normal._element.get_or_add_rPr()
+    rfonts = rpr.rFonts
+    if rfonts is None:
+        from docx.oxml import OxmlElement
+
+        rfonts = OxmlElement("w:rFonts")
+        rpr.append(rfonts)
+    rfonts.set(qn("w:eastAsia"), rules["body"]["font"])
+    rfonts.set(qn("w:ascii"), rules["body"]["font"])
+    rfonts.set(qn("w:hAnsi"), rules["body"]["font"])
+
+    ensure_style(doc, "Title", rules["toc"]["font"], rules["toc"]["title_size_pt"], True, "center")
+    ensure_style(doc, "Heading 1", rules["heading_1"]["font"], rules["heading_1"]["size_pt"], True, "center")
+    ensure_style(doc, "Heading 2", rules["heading_2"]["font"], rules["heading_2"]["size_pt"], True, "center")
+    ensure_style(doc, "Heading 3", rules["heading_3"]["font"], rules["heading_3"]["size_pt"], True, "left")
+
+    for section in doc.sections:
+        section.page_height = Cm(29.7)
+        section.page_width = Cm(21.0)
+        section.top_margin = Cm(rules["margins_cm"]["top"])
+        section.bottom_margin = Cm(rules["margins_cm"]["bottom"])
+        section.left_margin = Cm(rules["margins_cm"]["left"])
+        section.right_margin = Cm(rules["margins_cm"]["right"])
+
+
+@dataclass
+class Classification:
+    types: list[str]
+    prefix_toc_range: tuple[int, int] | None = None
+    confidence: float = 0.0
+    notes: list[str] = field(default_factory=list)
+
+
+def detect_prefix_toc_range(doc: Document) -> tuple[int, int] | None:
+    paras = list(doc.paragraphs)
+    idx_abs = None
+    for i, p in enumerate(paras):
+        if is_abstract_title((p.text or "").strip()):
+            idx_abs = i
+            break
+    if idx_abs is None or idx_abs < 8:
+        return None
+
+    start = 0
+    while start < idx_abs and not (paras[start].text or "").strip():
+        start += 1
+    if start >= idx_abs:
+        return None
+
+    total = 0
+    toc_like = 0
+    short_like = 0
+    body_like = 0
+    for p in paras[start:idx_abs]:
+        t = (p.text or "").strip()
+        if not t:
+            continue
+        nt = normalize_text(t)
+        total += 1
+        if len(nt) <= 42:
+            short_like += 1
+        sentence_marks = len(re.findall(r"[。！？!?；;：:]", nt))
+        if len(nt) >= 80 or (len(nt) >= 56 and sentence_marks >= 2):
+            body_like += 1
+        if looks_like_toc_entry(t):
+            toc_like += 1
+    if total < 8:
+        return None
+    toc_ratio = toc_like / total
+    short_ratio = short_like / total
+    if toc_ratio >= 0.72 and short_ratio >= 0.78 and body_like <= max(1, total // 12):
+        return (start, idx_abs)
+    return None
+
+
+def classify_document(doc: Document) -> Classification:
+    paras = list(doc.paragraphs)
+    types = [T_EMPTY for _ in paras]
+    notes: list[str] = []
+
+    for i, p in enumerate(paras):
+        t = (p.text or "").strip()
+        if not t:
+            types[i] = T_EMPTY
+            continue
+        types[i] = T_BODY
+
+    prefix_toc_range = detect_prefix_toc_range(doc)
+    if prefix_toc_range:
+        s, e = prefix_toc_range
+        for i in range(s, e):
+            if (paras[i].text or "").strip():
+                types[i] = T_TOC_ENTRY
+        notes.append(f"prefix_toc_detected={prefix_toc_range}")
+
+    # Strong anchors
+    for i, p in enumerate(paras):
+        t = (p.text or "").strip()
+        if not t:
+            continue
+        if prefix_toc_range is not None and prefix_toc_range[0] <= i < prefix_toc_range[1]:
+            if is_toc_title(t):
+                types[i] = T_TOC_TITLE
+            else:
+                types[i] = T_TOC_ENTRY
+            continue
+        if is_toc_title(t):
+            types[i] = T_TOC_TITLE
+        elif is_abstract_title(t):
+            types[i] = T_ABS_ZH_TITLE
+        elif is_english_abstract_title(t):
+            types[i] = T_ABS_EN_TITLE
+        elif is_keyword_zh(t):
+            types[i] = T_KW_ZH
+        elif is_keyword_en(t):
+            types[i] = T_KW_EN
+        elif is_references(t):
+            types[i] = T_REF_TITLE
+        elif is_ack(t):
+            types[i] = T_ACK_TITLE
+
+    # Heading class for non-front-matter lines.
+    for i, p in enumerate(paras):
+        if types[i] in {T_TOC_TITLE, T_TOC_ENTRY, T_ABS_ZH_TITLE, T_ABS_EN_TITLE, T_KW_ZH, T_KW_EN, T_REF_TITLE, T_ACK_TITLE, T_EMPTY}:
+            continue
+        t = (p.text or "").strip()
+        if is_chapter(t) or is_intro_like(t):
+            types[i] = T_H1
+        elif is_section(t):
+            types[i] = T_H2
+        elif is_subsection(t):
+            types[i] = T_H3
+
+    # Mark abstract bodies via boundary scan.
+    def mark_body_after(title_type: str, body_type: str, break_types: set[str]):
+        idx = next((i for i, tp in enumerate(types) if tp == title_type), None)
+        if idx is None:
+            return
+        for j in range(idx + 1, len(types)):
+            if types[j] in break_types:
+                break
+            t = (paras[j].text or "").strip()
+            if not t:
+                if body_type == T_ABS_ZH_BODY or body_type == T_ABS_EN_BODY:
+                    if j > idx + 1:
+                        break
+                    continue
+                continue
+            if types[j] in {T_BODY, T_H1, T_H2, T_H3}:
+                # Abstract body can include plain lines; stop at heading-like boundaries.
+                if types[j] in {T_H1, T_H2, T_H3}:
+                    break
+                types[j] = body_type
+
+    mark_body_after(
+        T_ABS_ZH_TITLE,
+        T_ABS_ZH_BODY,
+        {T_KW_ZH, T_ABS_EN_TITLE, T_TOC_TITLE, T_REF_TITLE, T_ACK_TITLE, T_H1},
+    )
+    mark_body_after(
+        T_ABS_EN_TITLE,
+        T_ABS_EN_BODY,
+        {T_KW_EN, T_TOC_TITLE, T_REF_TITLE, T_ACK_TITLE, T_H1},
+    )
+
+    # Mark references block entries to avoid justify/distributed spacing artifacts.
+    ref_title_indices = [i for i, tp in enumerate(types) if tp == T_REF_TITLE]
+    idx_ref_title = max(ref_title_indices) if ref_title_indices else None
+    if idx_ref_title is not None:
+        for j in range(idx_ref_title + 1, len(types)):
+            t = (paras[j].text or "").strip()
+            if not t:
+                continue
+            if is_ack(t) or types[j] == T_ACK_TITLE:
+                break
+            if types[j] in {T_ABS_ZH_TITLE, T_ABS_EN_TITLE, T_TOC_TITLE, T_REF_TITLE}:
+                break
+            if types[j] in {T_H1, T_H2} and not looks_like_reference_entry(t):
+                break
+            if looks_like_reference_entry(t) or types[j] in {T_BODY, T_H3}:
+                types[j] = T_REF_ENTRY
+
+    confidence = 0.0
+    if next((i for i, tp in enumerate(types) if tp == T_ABS_ZH_TITLE), None) is not None:
+        confidence += 0.35
+    if prefix_toc_range is not None:
+        confidence += 0.45
+    elif next((i for i, tp in enumerate(types) if tp == T_TOC_TITLE), None) is not None:
+        confidence += 0.30
+    if next((i for i, tp in enumerate(types) if tp == T_H1), None) is not None:
+        confidence += 0.25
+    confidence = min(1.0, confidence)
+
+    return Classification(types=types, prefix_toc_range=prefix_toc_range, confidence=confidence, notes=notes)
+
+
+def reorder_by_types(doc: Document, cls: Classification) -> tuple[list[dict[str, Any]], tuple[int, int] | None]:
+    """
+    Move detected prefix TOC block after abstract/keywords/english-abstract block.
+    This is only applied when confidence is high enough.
+    """
+    logs: list[dict[str, Any]] = []
+    if cls.prefix_toc_range is None or cls.confidence < 0.75:
+        if cls.prefix_toc_range is not None:
+            logs.append({"action": "skip_reorder_low_confidence", "confidence": cls.confidence})
+        return logs, None
+
+    s, e = cls.prefix_toc_range
+    paras = list(doc.paragraphs)
+    if e <= s or e > len(paras):
+        return logs, None
+
+    # Find anchor end in front matter (zh abstract -> zh kw -> en abstract -> en kw).
+    anchor_candidates = []
+    for i, tp in enumerate(cls.types):
+        if tp in {T_ABS_ZH_TITLE, T_ABS_ZH_BODY, T_KW_ZH, T_ABS_EN_TITLE, T_ABS_EN_BODY, T_KW_EN}:
+            anchor_candidates.append(i)
+    if not anchor_candidates:
+        return logs, None
+
+    anchor_idx = max(anchor_candidates)
+    if anchor_idx < e:
+        # If anchor is inside moved block, skip.
+        return logs, None
+
+    block = [paras[i]._p for i in range(s, e)]
+    anchor = paras[anchor_idx]._p
+    parent = anchor.getparent()
+    for el in block:
+        if el.getparent() is parent:
+            parent.remove(el)
+
+    insert_pos = parent.index(anchor) + 1
+    for el in block:
+        parent.insert(insert_pos, el)
+        insert_pos += 1
+
+    logs.append(
+        {
+            "action": "move_prefix_toc_after_front_matter",
+            "from": [s, e],
+            "after_anchor": anchor_idx,
+            "confidence": cls.confidence,
+        }
+    )
+    moved_idx: list[int] = []
+    paras_after = list(doc.paragraphs)
+    for i, p in enumerate(paras_after):
+        for el in block:
+            if p._p is el:
+                moved_idx.append(i)
+                break
+    moved_range: tuple[int, int] | None = None
+    if moved_idx:
+        moved_range = (min(moved_idx), max(moved_idx) + 1)
+    return logs, moved_range
+
+
+def ensure_marker_styles(doc: Document):
+    for t in [
+        T_EMPTY,
+        T_BODY,
+        T_TOC_TITLE,
+        T_TOC_ENTRY,
+        T_ABS_ZH_TITLE,
+        T_ABS_ZH_BODY,
+        T_KW_ZH,
+        T_ABS_EN_TITLE,
+        T_ABS_EN_BODY,
+        T_KW_EN,
+        T_H1,
+        T_H2,
+        T_H3,
+        T_REF_TITLE,
+        T_REF_ENTRY,
+        T_ACK_TITLE,
+    ]:
+        name = MARK_PREFIX + t
+        try:
+            doc.styles[name]
+        except KeyError:
+            doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+
+
+def write_type_markers(doc: Document, cls: Classification):
+    ensure_marker_styles(doc)
+    for p, tp in zip(doc.paragraphs, cls.types):
+        p.style = doc.styles[MARK_PREFIX + tp]
+
+
+def cleanup_marker_styles(doc: Document):
+    styles_el = doc.styles.element
+    remove_nodes = []
+    for st in list(styles_el):
+        if st.tag != qn("w:style"):
+            continue
+        style_id = st.get(qn("w:styleId")) or ""
+        name_el = st.find(qn("w:name"))
+        style_name = (name_el.get(qn("w:val")) if name_el is not None else "") or ""
+        if style_id.startswith(MARK_PREFIX) or style_name.startswith(MARK_PREFIX):
+            remove_nodes.append(st)
+    for st in remove_nodes:
+        styles_el.remove(st)
+
+
+def apply_final_styles_from_markers(doc: Document, rules: dict) -> int:
+    removed_numpr = 0
+    bullet_prefix_re = re.compile(r"^\s*[▪•■●◦]+\s*")
+    for p in doc.paragraphs:
+        if clear_paragraph_numbering(p):
+            removed_numpr += 1
+        p.paragraph_format.page_break_before = False
+        style_name = p.style.name if p.style else ""
+        text = (p.text or "").strip()
+        tp = style_name[len(MARK_PREFIX) :] if style_name.startswith(MARK_PREFIX) else None
+        if tp is None:
+            tp = T_EMPTY if not text else T_BODY
+
+        # Remove artifact bullets generated by broken list metadata before styling.
+        if tp not in {T_BODY, T_ABS_ZH_BODY, T_ABS_EN_BODY}:
+            original = p.text or ""
+            cleaned = bullet_prefix_re.sub("", original, count=1)
+            if cleaned != original:
+                p.text = cleaned
+                text = cleaned.strip()
+
+        if tp == T_EMPTY:
+            p.style = doc.styles["Normal"]
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after = Pt(0)
+            continue
+
+        if tp == T_ABS_ZH_TITLE:
+            p.style = doc.styles["Title"]
+            set_run_style(p, rules["abstract_title"]["font"], rules["abstract_title"]["size_pt"], True)
+            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=0, space_after=12)
+            p.paragraph_format.page_break_before = True
+        elif tp == T_ABS_EN_TITLE:
+            p.style = doc.styles["Title"]
+            set_run_style(p, rules["english"]["font"], 18, True)
+            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=0, space_after=12)
+            p.paragraph_format.page_break_before = True
+        elif tp == T_TOC_TITLE:
+            p.style = doc.styles["Title"]
+            set_run_style(p, rules["toc"]["font"], rules["toc"]["title_size_pt"], True)
+            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=0, space_after=12)
+            p.paragraph_format.page_break_before = True
+        elif tp == T_REF_TITLE or tp == T_ACK_TITLE:
+            p.style = doc.styles["Title"]
+            set_run_style(p, rules["heading_1"]["font"], rules["heading_1"]["size_pt"], True)
+            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=12, space_after=12)
+            p.paragraph_format.page_break_before = True
+        elif tp == T_H1:
+            p.style = doc.styles["Heading 1"]
+            set_run_style(p, rules["heading_1"]["font"], rules["heading_1"]["size_pt"], True)
+            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=12, space_after=12)
+        elif tp == T_H2:
+            p.style = doc.styles["Heading 2"]
+            set_run_style(p, rules["heading_2"]["font"], rules["heading_2"]["size_pt"], True)
+            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=6, space_after=6)
+        elif tp == T_H3:
+            p.style = doc.styles["Heading 3"]
+            set_run_style(p, rules["heading_3"]["font"], rules["heading_3"]["size_pt"], True)
+            set_para_format(p, align="left", line_spacing=1.25, indent_chars=0, space_before=6, space_after=6)
+        elif tp == T_TOC_ENTRY:
+            p.style = doc.styles["Normal"]
+            set_run_style(p, rules["toc"]["font"], rules["toc"]["body_size_pt"], False)
+            set_para_format(p, align="left", line_spacing=1.25, indent_chars=0, space_before=0, space_after=0)
+        elif tp == T_REF_ENTRY:
+            p.style = doc.styles["Normal"]
+            font = rules["body"]["font"]
+            if re.search(r"[A-Za-z]{6,}", text) and not re.search(r"[\u4e00-\u9fff]", text):
+                font = rules["english"]["font"]
+            set_run_style(p, font, rules["body"]["size_pt"], False)
+            set_para_format(
+                p,
+                align="left",
+                line_spacing=rules["body"]["line_spacing"],
+                indent_chars=0,
+                space_before=0,
+                space_after=0,
+            )
+        elif tp == T_KW_ZH:
+            p.style = doc.styles["Normal"]
+            set_run_style(p, rules["body"]["font"], rules["body"]["size_pt"], False)
+            set_para_format(p, align="left", line_spacing=1.25, indent_chars=0, space_before=6, space_after=12)
+        elif tp == T_KW_EN:
+            p.style = doc.styles["Normal"]
+            set_run_style(p, rules["english"]["font"], rules["english"]["size_pt"], False)
+            set_para_format(p, align="left", line_spacing=1.25, indent_chars=0, space_before=6, space_after=12)
+        elif tp == T_ABS_EN_BODY:
+            p.style = doc.styles["Normal"]
+            set_run_style(p, rules["english"]["font"], rules["english"]["size_pt"], False)
+            set_para_format(
+                p,
+                align="justify",
+                line_spacing=rules["english"]["line_spacing"],
+                indent_chars=2,
+                space_before=0,
+                space_after=0,
+            )
+        else:
+            # BODY + ABS_ZH_BODY
+            p.style = doc.styles["Normal"]
+            font = rules["body"]["font"]
+            if tp == T_ABS_EN_BODY or (re.search(r"[A-Za-z]{6,}", text) and not re.search(r"[\u4e00-\u9fff]", text)):
+                font = rules["english"]["font"]
+            set_run_style(p, font, rules["body"]["size_pt"], False)
+            set_para_format(
+                p,
+                align="justify",
+                line_spacing=rules["body"]["line_spacing"],
+                indent_chars=rules["body"]["first_line_indent_chars"],
+                space_before=0,
+                space_after=0,
+            )
+    return removed_numpr
+
+
+def _count_chars(doc: Document) -> int:
+    texts = []
+    for p in doc.paragraphs:
+        if p.text:
+            texts.append(p.text)
+    for t in doc.tables:
+        for row in t.rows:
+            for cell in row.cells:
+                if cell.text:
+                    texts.append(cell.text)
+    return len(re.sub(r"\s+", "", "\n".join(texts)))
+
+
+@dataclass
+class PipelineResult:
+    output: str
+    chars_no_space: int
+    removed_numpr_count: int
+    classification_confidence: float
+    logs: list[dict[str, Any]] = field(default_factory=list)
+
+
+def run_pipeline(input_docx: str | Path, output_docx: str | Path, rules: dict, write_marker_dump: Path | None = None) -> PipelineResult:
+    doc = Document(str(input_docx))
+    setup_document_base(doc, rules)
+
+    cls1 = classify_document(doc)
+    logs = [{"action": "classify_pass_1", "confidence": cls1.confidence, "notes": cls1.notes}]
+    reorder_logs, moved_toc_range = reorder_by_types(doc, cls1)
+    logs.extend(reorder_logs)
+
+    # Re-classify after possible move, then write markers.
+    cls2 = classify_document(doc)
+    if moved_toc_range is not None:
+        s2, e2 = moved_toc_range
+        paras2 = list(doc.paragraphs)
+        for i in range(max(0, s2), min(len(cls2.types), e2)):
+            t = (paras2[i].text or "").strip()
+            if not t:
+                continue
+            cls2.types[i] = T_TOC_TITLE if is_toc_title(t) else T_TOC_ENTRY
+        cls2.notes.append(f"force_toc_range={moved_toc_range}")
+    logs.append({"action": "classify_pass_2", "confidence": cls2.confidence, "notes": cls2.notes})
+    write_type_markers(doc, cls2)
+
+    if write_marker_dump is not None:
+        dump = []
+        for i, p in enumerate(doc.paragraphs):
+            t = (p.text or "").strip()
+            tp = cls2.types[i]
+            dump.append({"idx": i, "type": tp, "text": t[:120]})
+        write_marker_dump.write_text(json.dumps(dump, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    removed_numpr_count = apply_final_styles_from_markers(doc, rules)
+    logs.append({"action": "remove_numpr", "count": removed_numpr_count})
+    cleanup_marker_styles(doc)
+    logs.append({"action": "cleanup_marker_styles"})
+
+    output_docx = Path(output_docx)
+    output_docx.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(output_docx)
+    return PipelineResult(
+        output=str(output_docx),
+        chars_no_space=_count_chars(doc),
+        removed_numpr_count=removed_numpr_count,
+        classification_confidence=cls2.confidence,
+        logs=logs,
+    )

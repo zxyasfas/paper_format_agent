@@ -1,0 +1,28 @@
+{
+  "strategy_plan": [
+    {
+      "name": "base_format_only",
+      "strict_content_fix": false,
+      "format_only": true,
+      "apply_llm_content_fixes": false
+    },
+    {
+      "name": "strict_format_only",
+      "strict_content_fix": true,
+      "format_only": true,
+      "apply_llm_content_fixes": false
+    },
+    {
+      "name": "strict_content_rule_fix",
+      "strict_content_fix": true,
+      "format_only": false,
+      "apply_llm_content_fixes": false
+    },
+    {
+      "name": "strict_content_rule_llm_fix",
+      "strict_content_fix": true,
+      "format_only": false,
+      "apply_llm_content_fixes": true
+    }
+  ]
+}
