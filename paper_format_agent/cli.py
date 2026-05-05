@@ -113,11 +113,12 @@ def main():
     engine_report = run_postprocess_engine(args.engine, output_docx)
     (out_dir / "engine_report.json").write_text(json.dumps(engine_report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 排版前评分（原始论文）
+    # 排版前评分（原始论文，传入自身作为 baseline 确保评分标准一致）
     report_before = score_document(
         args.paper_file,
         rules,
         calibration_file=args.calibration_file,
+        baseline_docx=args.paper_file,
         enforce_required_sections=bool(args.strict_required_sections),
     )
     

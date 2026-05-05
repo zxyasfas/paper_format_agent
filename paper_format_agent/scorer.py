@@ -198,9 +198,9 @@ def score_document(
     # Default mode checks content preservation, not absolute length thresholds.
     if baseline_chars is not None and baseline_chars > 0:
         char_ratio = chars / baseline_chars
-        if char_ratio < 0.98:
+        if char_ratio < 0.95:
             loss_ratio = max(0.0, 1.0 - char_ratio)
-            penalties.append({"name": "content_loss_vs_baseline", "value": min(35, int(loss_ratio * 100) + 8)})
+            penalties.append({"name": "content_loss_vs_baseline", "value": min(15, int(loss_ratio * 50))})
     else:
         char_ratio = None
 

@@ -471,10 +471,11 @@ class PaperFormatGUI:
             
             self.update_progress(80, "正在生成评分报告...")
             
-            # 排版前评分（原始论文）
+            # 排版前评分（原始论文，传入自身作为 baseline 确保评分标准一致）
             report_before = score_document(
                 self.paper_file,
                 rules,
+                baseline_docx=self.paper_file,
                 enforce_required_sections=self.strict_var.get(),
             )
             
