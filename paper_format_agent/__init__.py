@@ -1,2 +1,4 @@
-"""Paper Format Agent MVP."""
-__version__ = "0.1.0"
+"""Paper Format Agent V3 - type-tag first, style second."""
+
+__version__ = "3.0.0"
+

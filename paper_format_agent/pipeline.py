@@ -12,7 +12,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
-from paper_format_agent.ooxml import set_font_east_asia
+from .ooxml import set_font_east_asia
 
 
 MARK_PREFIX = "PFA3_MARK_"

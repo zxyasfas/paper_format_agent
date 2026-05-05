@@ -1,4 +1,4 @@
-﻿# Paper Format Agent
+# Paper Format Agent
 
 > 面向高校毕业论文格式修订的自动化引擎（规则引擎 + LLM 辅助）
 
@@ -8,6 +8,12 @@
 - 页边距/行距/字体不一致
 - 页码与编号元数据污染（黑方块）
 - 评分与人工观感差异过大
+
+## ✨ 全新交互界面
+
+现已支持精美的图形界面，操作更简单直观！
+
+![GUI Preview](docs/gui_preview.png)
 
 ## 核心能力
 
@@ -26,46 +32,75 @@
 - 学院批量初审格式质检
 - 指导老师版式问题快速定位
 
-## 快速开始
+## 🚀 快速开始
 
-### 1) 安装
+### 方式一：图形界面（推荐）
 
 ```bash
+# 安装依赖
 pip install -r requirements.txt
+
+# 启动 GUI
+python run_gui.py
+
+# 或者
+python -m paper_format_agent
 ```
 
-### 2) 运行（推荐 V3）
+**GUI 特色功能：**
+- 🎯 拖拽上传文件支持
+- 📊 实时进度显示
+- 🎨 现代化 Material Design 界面
+- 📁 一键查看报告和输出目录
+- ✅ 智能状态提示
+
+### 方式二：命令行
 
 ```bash
-python -m paper_format_agent_v3.cli \
-  --format-file "<school_format.docx>" \
-  --paper-file "<student_paper.docx>" \
-  --out-dir "./sample_output/run_v3" \
-  --engine auto \
-  --marker-dump
-```
+# 安装
+pip install -r requirements.txt
 
-### 3) 严格评分（模板必需项）
+# 基础运行
+python -m paper_format_agent.cli \
+  --format-file "格式规范.docx" \
+  --paper-file "论文.docx" \
+  --out-dir "./output" \
+  --engine auto
 
-```bash
-python -m paper_format_agent_v3.cli \
-  --format-file "<school_format.docx>" \
-  --paper-file "<student_paper.docx>" \
-  --out-dir "./sample_output/run_v3_strict" \
+# 严格模式
+python -m paper_format_agent.cli \
+  --format-file "格式规范.docx" \
+  --paper-file "论文.docx" \
+  --out-dir "./output" \
   --engine auto \
   --strict-required-sections
 ```
 
-## 输出物
+## 📋 命令行参数
 
-- `formatted_paper_v3.docx`：修复后的论文
-- `format_report.json` / `format_report.html`：评分与特征报告
-- `modify_log.json`：每一轮修复日志
-- `marker_dump.json`：段落类型识别明细（启用时）
+| 参数 | 说明 | 必填 |
+|------|------|------|
+| `--format-file` | 格式规范文件（.doc/.docx/.txt） | ✅ |
+| `--paper-file` | 论文文件（.docx） | ✅ |
+| `--out-dir` | 输出目录 | ✅ |
+| `--engine` | 引擎选择：auto/word-com/libreoffice/python | 可选 |
+| `--strict-required-sections` | 严格模式 | 可选 |
+| `--marker-dump` | 输出段落类型识别明细 | 可选 |
 
-## 架构概览
+## 📦 输出文件
 
-```text
+| 文件名 | 说明 |
+|--------|------|
+| `formatted_paper.docx` | 📄 排版后的论文 |
+| `format_report.html` | 📊 可视化检测报告 |
+| `format_report.json` | 📋 详细检测数据 |
+| `format_rules.json` | 📐 提取的格式规则 |
+| `modify_log.json` | 📝 修改日志 |
+| `marker_dump.json` | 🏷️ 段落类型识别明细（可选）|
+
+## 🏗️ 架构概览
+
+```
 Input docx
   -> Classifier (type tags)
   -> Reorder (when confident)
@@ -77,22 +112,49 @@ Input docx
 ```
 
 详见：
-- [README_V3.md](README_V3.md)
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [README_V3.md](README_V3.md) - V3 版本详细说明
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - 架构文档
+- [SDD.md](SDD.md) - 软件设计文档
 
-## 设计原则
+## ⚠️ 注意事项
 
-- 默认不改论文学术内容，仅改格式
-- 先可控再智能：LLM 只做建议，最终由规则二次校验
-- 所有评分项可追溯到具体 penalty
+1. **LibreOffice（可选）**
+   - 用于 `.doc` 转 `.docx`
+   - 用于自动更新目录和页码
+   - 如果没有安装，程序会自动降级使用 Python 引擎
 
-## 开源协作
+2. **文件格式**
+   - 输入论文必须是 `.docx` 格式
+   - 格式规范支持 `.doc`、`.docx`、`.txt`
+
+3. **Windows 路径**
+   - 路径包含空格时请使用引号包裹
+
+## 🛠️ 开发
+
+```bash
+# 克隆项目
+git clone https://github.com/zxyasfas/paper_format_agent.git
+cd paper_format_agent
+
+# 安装开发依赖
+pip install -r requirements.txt
+
+# 运行测试
+python -m paper_format_agent.cli --help
+```
+
+## 🤝 开源协作
 
 - 贡献指南：[CONTRIBUTING.md](CONTRIBUTING.md)
 - 安全策略：[SECURITY.md](SECURITY.md)
 - 路线图：[ROADMAP.md](ROADMAP.md)
 - 许可证：[LICENSE](LICENSE)
 
-## 免责声明
+## 📝 免责声明
 
 本项目用于格式修订与教学辅助，不替代导师学术审查。请在提交前进行人工复核。
+
+---
+
+Made with ❤️ for better academic writing

@@ -2,104 +2,147 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
+import tempfile
+from pathlib import Path
 
-from .workflow import run_langgraph_pipeline, run_legacy_pipeline
+from docx import Document
+
+from .llm import LLMConfig, generate_suggestions
+
+from .calibration import calibrate_from_labels
+from .engines import run_postprocess_engine
+from .pipeline import run_pipeline
+from .rules import extract_rules_from_text
+from .scorer import save_reports, score_document
+
+
+def read_docx_text(path: Path) -> str:
+    doc = Document(path)
+    out = [p.text for p in doc.paragraphs if p.text]
+    for t in doc.tables:
+        for r in t.rows:
+            for c in r.cells:
+                if c.text:
+                    out.append(c.text)
+    return "\n".join(out)
+
+
+def read_format_text(path: str | Path) -> str:
+    path = Path(path)
+    if path.suffix.lower() == ".docx":
+        return read_docx_text(path)
+    if path.suffix.lower() == ".txt":
+        return path.read_text(encoding="utf-8", errors="ignore")
+    with tempfile.TemporaryDirectory() as td:
+        out_dir = Path(td)
+        try:
+            subprocess.run(
+                ["libreoffice", "--headless", "--convert-to", "docx", "--outdir", str(out_dir), str(path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=90,
+            )
+            converted = out_dir / f"{path.stem}.docx"
+            if converted.exists():
+                return read_docx_text(converted)
+        except Exception:
+            pass
+    return ""
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Paper Format Agent MVP")
-    parser.add_argument("--format-file", required=True, help="Format requirement file (.doc/.docx/.txt)")
-    parser.add_argument("--paper-file", required=True, help="Input thesis paper .docx")
-    parser.add_argument("--out-dir", required=True, help="Output directory")
+    parser = argparse.ArgumentParser(description="Paper Format Agent V3 (type-tag first)")
+    parser.add_argument("--format-file", help="格式要求文件（.doc/.docx/.txt）")
+    parser.add_argument("--paper-file", help="论文文件（.docx）")
+    parser.add_argument("--out-dir", required=True, help="输出目录")
     parser.add_argument(
-        "--author-bio-file",
-        default=None,
-        help="Author bio source file (.txt/.docx). If omitted, author bio body will not be auto-generated.",
+        "--engine",
+        default="auto",
+        choices=["auto", "python", "word-com", "libreoffice"],
+        help="排版后处理引擎",
     )
-    parser.add_argument(
-        "--strict-content-fix",
-        action="store_true",
-        help="Enable strict structure fixes (labels/keywords/author bio/etc.)",
-    )
-    parser.add_argument(
-        "--no-update-fields",
-        action="store_true",
-        help="Do not run LibreOffice field updates for TOC/page fields",
-    )
-    parser.add_argument(
-        "--allow-content-edit",
-        action="store_true",
-        help="Allow content-level edits (default is format-only).",
-    )
+    parser.add_argument("--marker-dump", action="store_true", help="输出段落类型标注明细")
+    parser.add_argument("--calibration-file", default=None, help="评分校准参数 JSON 文件")
+    parser.add_argument("--strict-required-sections", action="store_true", help="严格按模板要求校验缺失章节")
 
-    # Workflow engine selection
-    parser.add_argument(
-        "--use-langgraph",
-        action="store_true",
-        help="Run pipeline via LangGraph state workflow.",
-    )
-    parser.add_argument(
-        "--auto-iterate",
-        action="store_true",
-        help="In LangGraph mode, iterate format->score until target score or max rounds.",
-    )
-    parser.add_argument(
-        "--target-score",
-        type=float,
-        default=95.0,
-        help="Target score for auto iteration (LangGraph mode).",
-    )
-    parser.add_argument(
-        "--max-rounds",
-        type=int,
-        default=3,
-        help="Max iteration rounds for auto-iterate (LangGraph mode).",
-    )
-    parser.add_argument(
-        "--auto-iterate-allow-content-edit",
-        action="store_true",
-        help="Allow auto-iterate to escalate into content-edit strategy in later rounds.",
-    )
-    parser.add_argument(
-        "--strategy-config",
-        default=None,
-        help="Optional JSON strategy config for LangGraph auto-iteration.",
-    )
-    parser.add_argument(
-        "--perfect-mode",
-        action="store_true",
-        help="One-click high-strength mode: enable LangGraph + LLM + auto-iterate with content escalation.",
-    )
+    parser.add_argument("--use-llm", action="store_true", help="启用 LLM 建议（只建议，不改内容）")
+    parser.add_argument("--llm-api-key", default=None)
+    parser.add_argument("--llm-base-url", default="https://api.deepseek.com")
+    parser.add_argument("--llm-model", default="deepseek-v4-pro")
+    parser.add_argument("--llm-timeout", type=int, default=90)
 
-    # LLM enhancement (DeepSeek compatible by default).
-    parser.add_argument("--use-llm", action="store_true", help="Enable LLM semantic enhancement before formatting")
-    parser.add_argument("--llm-api-key", default=None, help="LLM API key (default: DEEPSEEK_API_KEY env)")
-    parser.add_argument("--llm-base-url", default=None, help="LLM base URL (default: https://api.deepseek.com)")
-    parser.add_argument("--llm-model", default=None, help="LLM model (default: deepseek-v4-pro)")
-    parser.add_argument("--llm-timeout", type=int, default=90, help="LLM request timeout seconds")
-    parser.add_argument(
-        "--apply-llm-content-fixes",
-        action="store_true",
-        help="Allow LLM to insert missing semantic sections (英文摘要/关键词等). Default is suggestions-only.",
-    )
+    parser.add_argument("--calibrate-labels", default=None, help="校准模式：人工评分标签 JSON")
+    parser.add_argument("--calibrate-out", default=None, help="校准输出 JSON（默认 out-dir/scoring_calibration.json）")
+
     args = parser.parse_args()
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    arg_dict = vars(args)
-    arg_dict["format_only"] = not bool(args.allow_content_edit)
-    if args.perfect_mode:
-        arg_dict["use_langgraph"] = True
-        arg_dict["use_llm"] = True
-        arg_dict["auto_iterate"] = True
-        # Stable-first: avoid aggressive content mutation unless user explicitly enables it.
-        arg_dict["auto_iterate_allow_content_edit"] = False
-        arg_dict["target_score"] = max(float(arg_dict.get("target_score", 95.0)), 95.0)
-        arg_dict["max_rounds"] = max(int(arg_dict.get("max_rounds", 3)), 6)
+    if args.calibrate_labels:
+        out_file = Path(args.calibrate_out) if args.calibrate_out else (out_dir / "scoring_calibration.json")
+        rules = extract_rules_from_text(read_format_text(args.format_file)) if args.format_file else extract_rules_from_text("")
+        result = calibrate_from_labels(args.calibrate_labels, out_file, rules=rules)
+        print(json.dumps({"calibration_file": str(out_file), **result}, ensure_ascii=False, indent=2))
+        return
 
-    if args.use_langgraph:
-        result = run_langgraph_pipeline(arg_dict)
-    else:
-        result = run_legacy_pipeline(arg_dict)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if not args.format_file or not args.paper_file:
+        raise ValueError("normal formatting mode requires --format-file and --paper-file")
+
+    format_text = read_format_text(args.format_file)
+    rules = extract_rules_from_text(format_text)
+    (out_dir / "format_rules.json").write_text(json.dumps(rules, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    llm_cfg = LLMConfig(
+        enabled=bool(args.use_llm),
+        api_key=args.llm_api_key or os.getenv("DEEPSEEK_API_KEY"),
+        base_url=args.llm_base_url,
+        model=args.llm_model,
+        timeout_seconds=args.llm_timeout,
+    )
+    llm_report = generate_suggestions(args.paper_file, format_text, llm_cfg)
+    (out_dir / "llm_suggestions.json").write_text(json.dumps(llm_report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    marker_dump = out_dir / "marker_dump.json" if args.marker_dump else None
+    output_docx = out_dir / "formatted_paper_v3.docx"
+    run_result = run_pipeline(args.paper_file, output_docx, rules, write_marker_dump=marker_dump)
+    (out_dir / "modify_log.json").write_text(json.dumps(run_result.logs, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    engine_report = run_postprocess_engine(args.engine, output_docx)
+    (out_dir / "engine_report.json").write_text(json.dumps(engine_report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    report = score_document(
+        output_docx,
+        rules,
+        calibration_file=args.calibration_file,
+        baseline_docx=args.paper_file,
+        enforce_required_sections=bool(args.strict_required_sections),
+    )
+    report["llm_used"] = bool(llm_report.get("used"))
+    report["llm_warnings"] = llm_report.get("warnings", [])
+    report["engine_report"] = engine_report
+    report["removed_numpr_count"] = run_result.removed_numpr_count
+    report["classification_confidence"] = run_result.classification_confidence
+    save_reports(report, out_dir / "format_report.json", out_dir / "format_report.html")
+
+    print(
+        json.dumps(
+            {
+                "output": str(output_docx),
+                "score": report["score"],
+                "raw_quality_score": report.get("raw_quality_score"),
+                "chars_no_space": report["chars_no_space"],
+                "removed_numpr_count": run_result.removed_numpr_count,
+                "engine": engine_report.get("engine", args.engine),
+                "engine_success": bool(engine_report.get("success")),
+                "llm_used": bool(llm_report.get("used")),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
