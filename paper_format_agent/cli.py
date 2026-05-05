@@ -113,13 +113,30 @@ def main():
     engine_report = run_postprocess_engine(args.engine, output_docx)
     (out_dir / "engine_report.json").write_text(json.dumps(engine_report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    report = score_document(
+    # 排版前评分（原始论文）
+    report_before = score_document(
+        args.paper_file,
+        rules,
+        calibration_file=args.calibration_file,
+        enforce_required_sections=bool(args.strict_required_sections),
+    )
+    
+    # 排版后评分（格式化后的论文）
+    report_after = score_document(
         output_docx,
         rules,
         calibration_file=args.calibration_file,
         baseline_docx=args.paper_file,
         enforce_required_sections=bool(args.strict_required_sections),
     )
+    
+    # 合并报告
+    report = report_after.copy()
+    report["score_before"] = round(report_before["score"], 1)
+    report["score_after"] = round(report_after["score"], 1)
+    report["score_improvement"] = round(report_after["score"] - report_before["score"], 1)
+    report["chars_no_space_before"] = report_before["chars_no_space"]
+    report["chars_no_space_after"] = report_after["chars_no_space"]
     report["llm_used"] = bool(llm_report.get("used"))
     report["llm_warnings"] = llm_report.get("warnings", [])
     report["engine_report"] = engine_report
@@ -131,9 +148,12 @@ def main():
         json.dumps(
             {
                 "output": str(output_docx),
-                "score": report["score"],
+                "score_before": report["score_before"],
+                "score_after": report["score_after"],
+                "score_improvement": report["score_improvement"],
                 "raw_quality_score": report.get("raw_quality_score"),
-                "chars_no_space": report["chars_no_space"],
+                "chars_no_space_before": report["chars_no_space_before"],
+                "chars_no_space_after": report["chars_no_space_after"],
                 "removed_numpr_count": run_result.removed_numpr_count,
                 "engine": engine_report.get("engine", args.engine),
                 "engine_success": bool(engine_report.get("success")),

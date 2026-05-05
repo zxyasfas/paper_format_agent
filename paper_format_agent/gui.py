@@ -471,13 +471,28 @@ class PaperFormatGUI:
             
             self.update_progress(80, "正在生成评分报告...")
             
-            # 评分
-            report = score_document(
+            # 排版前评分（原始论文）
+            report_before = score_document(
+                self.paper_file,
+                rules,
+                enforce_required_sections=self.strict_var.get(),
+            )
+            
+            # 排版后评分（格式化后的论文）
+            report_after = score_document(
                 output_docx,
                 rules,
                 baseline_docx=self.paper_file,
                 enforce_required_sections=self.strict_var.get(),
             )
+            
+            # 合并报告
+            report = report_after.copy()
+            report["score_before"] = round(report_before["score"], 1)
+            report["score_after"] = round(report_after["score"], 1)
+            report["score_improvement"] = round(report_after["score"] - report_before["score"], 1)
+            report["chars_no_space_before"] = report_before["chars_no_space"]
+            report["chars_no_space_after"] = report_after["chars_no_space"]
             report["engine_report"] = engine_report
             report["removed_numpr_count"] = run_result.removed_numpr_count
             report["classification_confidence"] = run_result.classification_confidence
@@ -488,10 +503,12 @@ class PaperFormatGUI:
             self.update_progress(100, "✅ 排版完成！")
             
             # 显示结果
-            score = report["score"]
-            chars = report["chars_no_space"]
+            score_before = report["score_before"]
+            score_after = report["score_after"]
+            improvement = report["score_improvement"]
+            chars_after = report["chars_no_space_after"]
             
-            self.root.after(0, lambda: self.show_success_message(score, chars))
+            self.root.after(0, lambda: self.show_success_message(score_before, score_after, improvement, chars_after))
             
         except Exception as e:
             self.root.after(0, lambda: self.show_error_message(str(e)))
@@ -507,17 +524,21 @@ class PaperFormatGUI:
         self.progress_bar.set_progress(value)
         self.progress_label.configure(text=message, fg=ModernTheme.PRIMARY)
     
-    def show_success_message(self, score, chars):
+    def show_success_message(self, score_before, score_after, improvement, chars):
         """显示成功消息"""
-        color = ModernTheme.SUCCESS if score >= 90 else ModernTheme.WARNING if score >= 60 else ModernTheme.ERROR
-        emoji = "🎉" if score >= 90 else "👍" if score >= 60 else "⚠️"
+        color = ModernTheme.SUCCESS if score_after >= 90 else ModernTheme.WARNING if score_after >= 60 else ModernTheme.ERROR
+        emoji = "🎉" if score_after >= 90 else "👍" if score_after >= 60 else "⚠️"
+        improvement_emoji = "📈" if improvement > 0 else "📉" if improvement < 0 else "➡️"
+        improvement_sign = "+" if improvement > 0 else ""
         
         message = f"{emoji} 排版完成！\n\n"
-        message += f"📊 格式评分: {score:.1f} 分\n"
-        message += f"📝 论文字数: {chars:,} 字符\n\n"
+        message += f"📊 排版前评分: {score_before:.1f} 分\n"
+        message += f"� 排版后评分: {score_after:.1f} 分\n"
+        message += f"{improvement_emoji} 分数变化: {improvement_sign}{improvement:.1f} 分\n\n"
+        message += f"�📝 论文字数: {chars:,} 字符\n\n"
         message += f"📁 输出目录: {self.last_output_dir}"
         
-        self.status_label.configure(text=f"✅ 排版完成 | 评分: {score:.1f} 分", fg=color)
+        self.status_label.configure(text=f"✅ 排版完成 | 提升 {improvement_sign}{improvement:.1f} 分", fg=color)
         
         if messagebox.askyesno("排版完成", message + "\n\n是否立即查看报告？"):
             self.open_report()

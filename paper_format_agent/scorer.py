@@ -277,18 +277,71 @@ def save_reports(report: dict[str, Any], out_json: str | Path, out_html: str | P
     for k, v in report.get("features", {}).items():
         feat_rows.append(f"<tr><td>{k}</td><td>{v}</td></tr>")
 
+    # 检查是否有排版前后对比数据
+    has_comparison = "score_before" in report and "score_after" in report
+    
+    if has_comparison:
+        score_before = report['score_before']
+        score_after = report['score_after']
+        improvement = report.get('score_improvement', score_after - score_before)
+        chars_before = report.get('chars_no_space_before', report.get('chars_no_space', 0))
+        chars_after = report.get('chars_no_space_after', report.get('chars_no_space', 0))
+        improvement_color = "#4CAF50" if improvement >= 0 else "#F44336"
+        improvement_sign = "+" if improvement > 0 else ""
+        
+        comparison_html = f"""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 20px 0;">
+            <h2 style="margin-top: 0; color: white;">📊 排版效果对比</h2>
+            <div style="display: flex; justify-content: space-around; text-align: center;">
+                <div style="padding: 15px;">
+                    <div style="font-size: 14px; opacity: 0.9;">排版前</div>
+                    <div style="font-size: 36px; font-weight: bold;">{score_before}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">{chars_before:,} 字符</div>
+                </div>
+                <div style="padding: 15px; display: flex; align-items: center;">
+                    <div style="font-size: 48px;">→</div>
+                </div>
+                <div style="padding: 15px;">
+                    <div style="font-size: 14px; opacity: 0.9;">排版后</div>
+                    <div style="font-size: 36px; font-weight: bold;">{score_after}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">{chars_after:,} 字符</div>
+                </div>
+                <div style="padding: 15px;">
+                    <div style="font-size: 14px; opacity: 0.9;">提升</div>
+                    <div style="font-size: 36px; font-weight: bold; color: {improvement_color};">{improvement_sign}{improvement:.1f}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">分</div>
+                </div>
+            </div>
+        </div>
+        """
+        score_display = f"{score_after}"
+    else:
+        comparison_html = ""
+        score_display = f"{report['score']}"
+
     html = (
         "<!doctype html><html><head><meta charset='utf-8'><title>V3质量评分</title>"
-        "<style>body{font-family:Arial,'Microsoft YaHei';max-width:1000px;margin:24px auto;line-height:1.6}"
-        "table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px}"
-        "th{background:#f5f5f5}</style></head><body>"
-        f"<h1>V3 质量评分</h1><p><b>最终分：</b>{report['score']} / 100</p>"
+        "<style>"
+        "body{font-family:Arial,'Microsoft YaHei';max-width:1000px;margin:24px auto;line-height:1.6;background:#f5f5f5}"
+        ".container{background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}"
+        "table{border-collapse:collapse;width:100%;margin:15px 0}"
+        "td,th{border:1px solid #ddd;padding:10px;text-align:left}"
+        "th{background:#f5f5f5;font-weight:bold}"
+        "tr:hover{background:#f9f9f9}"
+        "h1{color:#333;border-bottom:3px solid #667eea;padding-bottom:15px}"
+        "h2{color:#555;margin-top:30px}"
+        ".score-box{display:inline-block;padding:15px 30px;background:#667eea;color:white;border-radius:8px;font-size:24px;font-weight:bold}"
+        "</style></head><body>"
+        "<div class='container'>"
+        "<h1>🎓 论文格式质量评分报告</h1>"
+        + comparison_html +
+        f"<p><b>最终得分：</b><span class='score-box'>{score_display}</span> / 100</p>"
         f"<p><b>原始质量分：</b>{report.get('raw_quality_score', report['score'])}</p>"
-        "<h2>Penalty</h2><table><tr><th>项</th><th>扣分</th></tr>"
+        "<h2>⚠️ 扣分项</h2><table><tr><th>项</th><th>扣分</th></tr>"
         + "".join(rows)
         + "</table>"
-        + "<h2>Features</h2><table><tr><th>项</th><th>值</th></tr>"
+        + "<h2>📋 特征详情</h2><table><tr><th>项</th><th>值</th></tr>"
         + "".join(feat_rows)
-        + "</table></body></html>"
+        + "</table></div></body></html>"
     )
     out_html.write_text(html, encoding="utf-8")
