@@ -105,41 +105,41 @@ class FileDropZone(tk.Frame):
         self.file_types = file_types
         
         # 边框容器
-        self.container = tk.Frame(self, bg=ModernTheme.PRIMARY_LIGHT, padx=2, pady=2)
-        self.container.pack(fill="both", expand=True, padx=10, pady=5)
+        self.container = tk.Frame(self, bg=ModernTheme.PRIMARY_LIGHT, padx=1, pady=1)
+        self.container.pack(fill="both", expand=True, padx=5, pady=2)
         
         # 内部区域
-        self.inner = tk.Frame(self.container, bg=ModernTheme.SURFACE, padx=20, pady=20)
+        self.inner = tk.Frame(self.container, bg=ModernTheme.SURFACE, padx=10, pady=10)
         self.inner.pack(fill="both", expand=True)
         
         # 图标
-        self.icon_label = tk.Label(self.inner, text="📄", font=("Segoe UI Emoji", 48),
+        self.icon_label = tk.Label(self.inner, text="📄", font=("Segoe UI Emoji", 36),
                                    bg=ModernTheme.SURFACE, fg=ModernTheme.PRIMARY)
-        self.icon_label.pack(pady=10)
+        self.icon_label.pack(pady=5)
         
         # 标题
-        self.title_label = tk.Label(self.inner, text=title, font=("Microsoft YaHei", 12, "bold"),
+        self.title_label = tk.Label(self.inner, text=title, font=("Microsoft YaHei", 11, "bold"),
                                     bg=ModernTheme.SURFACE, fg=ModernTheme.ON_SURFACE)
         self.title_label.pack()
         
         # 说明文字
         self.desc_label = tk.Label(self.inner, text=f"支持格式: {', '.join(file_types)}",
-                                   font=("Microsoft YaHei", 9),
+                                   font=("Microsoft YaHei", 8),
                                    bg=ModernTheme.SURFACE, fg="#757575")
-        self.desc_label.pack(pady=5)
+        self.desc_label.pack(pady=2)
         
         # 文件名显示
         self.file_label = tk.Label(self.inner, text="点击选择文件或拖拽到此处",
-                                   font=("Microsoft YaHei", 10),
+                                   font=("Microsoft YaHei", 9),
                                    bg=ModernTheme.SURFACE, fg=ModernTheme.PRIMARY,
                                    wraplength=250)
-        self.file_label.pack(pady=10)
+        self.file_label.pack(pady=5)
         
         # 选择按钮
-        self.select_btn = tk.Label(self.inner, text="选择文件", font=("Microsoft YaHei", 10),
+        self.select_btn = tk.Label(self.inner, text="选择文件", font=("Microsoft YaHei", 9),
                                    bg=ModernTheme.PRIMARY, fg=ModernTheme.ON_PRIMARY,
-                                   padx=20, pady=5, cursor="hand2")
-        self.select_btn.pack(pady=10)
+                                   padx=15, pady=3, cursor="hand2")
+        self.select_btn.pack(pady=5)
         self.select_btn.bind("<Enter>", lambda e: self.select_btn.configure(bg=ModernTheme.PRIMARY_DARK))
         self.select_btn.bind("<Leave>", lambda e: self.select_btn.configure(bg=ModernTheme.PRIMARY))
         self.select_btn.bind("<Button-1>", self.on_select)
@@ -217,9 +217,9 @@ class PaperFormatGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("📚 论文格式智能排版工具")
-        self.root.geometry("900x700")
+        self.root.geometry("900x750")
         self.root.configure(bg=ModernTheme.BACKGROUND)
-        self.root.minsize(800, 600)
+        self.root.minsize(800, 650)
         
         # 设置窗口居中
         self.center_window()
@@ -234,7 +234,7 @@ class PaperFormatGUI:
         """窗口居中显示"""
         self.root.update_idletasks()
         width = 900
-        height = 700
+        height = 750
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
@@ -266,7 +266,7 @@ class PaperFormatGUI:
         
         # 主内容区
         self.main_frame = tk.Frame(self.root, bg=ModernTheme.BACKGROUND)
-        self.main_frame.pack(fill="both", expand=True, padx=30, pady=20)
+        self.main_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         # 文件选择区域
         self.files_frame = tk.Frame(self.main_frame, bg=ModernTheme.BACKGROUND)
@@ -274,58 +274,58 @@ class PaperFormatGUI:
         
         # 左侧：格式规范文件
         self.format_frame = tk.LabelFrame(self.files_frame, text="📋 格式规范文件",
-                                          font=("Microsoft YaHei", 11, "bold"),
+                                          font=("Microsoft YaHei", 10, "bold"),
                                           bg=ModernTheme.BACKGROUND, fg=ModernTheme.ON_SURFACE,
-                                          padx=10, pady=10)
-        self.format_frame.pack(side="left", fill="both", expand=True, padx=5, pady=5)
+                                          padx=5, pady=5)
+        self.format_frame.pack(side="left", fill="both", expand=True, padx=3, pady=3)
         
         self.format_drop = FileDropZone(self.format_frame, "上传格式规范文件",
                                         [".docx", ".doc", ".txt"],
                                         self.on_format_selected)
-        self.format_drop.pack(fill="both", expand=True, padx=5, pady=5)
+        self.format_drop.pack(fill="both", expand=True, padx=3, pady=3)
         
         # 右侧：论文文件
         self.paper_frame = tk.LabelFrame(self.files_frame, text="📝 论文文件",
-                                         font=("Microsoft YaHei", 11, "bold"),
+                                         font=("Microsoft YaHei", 10, "bold"),
                                          bg=ModernTheme.BACKGROUND, fg=ModernTheme.ON_SURFACE,
-                                         padx=10, pady=10)
-        self.paper_frame.pack(side="right", fill="both", expand=True, padx=5, pady=5)
+                                         padx=5, pady=5)
+        self.paper_frame.pack(side="right", fill="both", expand=True, padx=3, pady=3)
         
         self.paper_drop = FileDropZone(self.paper_frame, "上传论文文件",
                                        [".docx"],
                                        self.on_paper_selected)
-        self.paper_drop.pack(fill="both", expand=True, padx=5, pady=5)
+        self.paper_drop.pack(fill="both", expand=True, padx=3, pady=3)
         
         # 选项区域
         self.options_frame = tk.LabelFrame(self.main_frame, text="⚙️ 排版选项",
-                                           font=("Microsoft YaHei", 11, "bold"),
+                                           font=("Microsoft YaHei", 10, "bold"),
                                            bg=ModernTheme.BACKGROUND, fg=ModernTheme.ON_SURFACE,
-                                           padx=15, pady=10)
-        self.options_frame.pack(fill="x", pady=15)
+                                           padx=10, pady=5)
+        self.options_frame.pack(fill="x", pady=8)
         
         # 严格模式选项
         self.strict_var = tk.BooleanVar(value=False)
         self.strict_check = tk.Checkbutton(self.options_frame, text="严格模式（按模板必需项校验）",
                                            variable=self.strict_var,
-                                           font=("Microsoft YaHei", 10),
+                                           font=("Microsoft YaHei", 9),
                                            bg=ModernTheme.BACKGROUND, fg=ModernTheme.ON_SURFACE,
                                            selectcolor=ModernTheme.SURFACE,
                                            activebackground=ModernTheme.BACKGROUND)
-        self.strict_check.pack(anchor="w", pady=3)
+        self.strict_check.pack(anchor="w", pady=1)
         
         # 输出明细选项
         self.marker_var = tk.BooleanVar(value=True)
         self.marker_check = tk.Checkbutton(self.options_frame, text="输出段落类型识别明细",
                                            variable=self.marker_var,
-                                           font=("Microsoft YaHei", 10),
+                                           font=("Microsoft YaHei", 9),
                                            bg=ModernTheme.BACKGROUND, fg=ModernTheme.ON_SURFACE,
                                            selectcolor=ModernTheme.SURFACE,
                                            activebackground=ModernTheme.BACKGROUND)
-        self.marker_check.pack(anchor="w", pady=3)
+        self.marker_check.pack(anchor="w", pady=1)
         
         # 进度区域
         self.progress_frame = tk.Frame(self.main_frame, bg=ModernTheme.BACKGROUND)
-        self.progress_frame.pack(fill="x", pady=15)
+        self.progress_frame.pack(fill="x", pady=8)
         
         self.progress_label = tk.Label(self.progress_frame, text="就绪",
                                        font=("Microsoft YaHei", 10),
@@ -337,41 +337,41 @@ class PaperFormatGUI:
         
         # 操作按钮区域
         self.button_frame = tk.Frame(self.main_frame, bg=ModernTheme.BACKGROUND)
-        self.button_frame.pack(fill="x", pady=10)
+        self.button_frame.pack(fill="x", pady=5)
         
         # 开始按钮
         self.start_btn = RoundedButton(self.button_frame, "🚀 开始排版", 
                                        command=self.start_formatting,
-                                       bg=ModernTheme.SUCCESS, width=150, height=45)
-        self.start_btn.pack(side="left", padx=5)
+                                       bg=ModernTheme.SUCCESS, width=140, height=40)
+        self.start_btn.pack(side="left", padx=3)
         
         # 清除按钮
         self.clear_btn = RoundedButton(self.button_frame, "🔄 清除",
                                        command=self.clear_all,
-                                       bg=ModernTheme.WARNING, width=120, height=45)
-        self.clear_btn.pack(side="left", padx=5)
+                                       bg=ModernTheme.WARNING, width=110, height=40)
+        self.clear_btn.pack(side="left", padx=3)
         
         # 查看报告按钮（初始禁用）
         self.report_btn = RoundedButton(self.button_frame, "📊 查看报告",
                                         command=self.open_report,
-                                        bg=ModernTheme.PRIMARY, width=120, height=45)
-        self.report_btn.pack(side="right", padx=5)
+                                        bg=ModernTheme.PRIMARY, width=110, height=40)
+        self.report_btn.pack(side="right", padx=3)
         
         # 输出目录按钮
         self.output_btn = RoundedButton(self.button_frame, "📁 输出目录",
                                         command=self.open_output_dir,
-                                        bg=ModernTheme.PRIMARY, width=120, height=45)
-        self.output_btn.pack(side="right", padx=5)
+                                        bg=ModernTheme.PRIMARY, width=110, height=40)
+        self.output_btn.pack(side="right", padx=3)
         
         # 状态栏
-        self.status_bar = tk.Frame(self.root, bg=ModernTheme.SURFACE, height=30)
+        self.status_bar = tk.Frame(self.root, bg=ModernTheme.SURFACE, height=25)
         self.status_bar.pack(fill="x", side="bottom")
         self.status_bar.pack_propagate(False)
         
         self.status_label = tk.Label(self.status_bar, text="就绪 | 请选择文件",
                                      font=("Microsoft YaHei", 9),
                                      bg=ModernTheme.SURFACE, fg="#757575")
-        self.status_label.pack(side="left", padx=15, pady=5)
+        self.status_label.pack(side="left", padx=10, pady=2)
         
         self.output_path = Path.home() / "Documents" / "PaperFormatOutput"
         self.output_path.mkdir(parents=True, exist_ok=True)
