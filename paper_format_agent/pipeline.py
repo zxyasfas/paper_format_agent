@@ -13,6 +13,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 from .ooxml import set_font_east_asia
+from .quality import build_content_fingerprint
 
 
 MARK_PREFIX = "PFA3_MARK_"
@@ -141,7 +142,7 @@ def is_figure_caption(text: str) -> bool:
         return False
     return bool(
         re.match(
-            r"^(图|Fig\.?)\s*[0-9一二三四五六七八九十\.\-－—]+(?:\s|[:：．.、]|$)",
+            r"^(\u56fe|Fig\.?)\s*[0-9\u4e00-\u9fff.\-\uFF0D\u2014]+(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
             t,
             flags=re.IGNORECASE,
         )
@@ -154,7 +155,7 @@ def is_table_caption(text: str) -> bool:
         return False
     return bool(
         re.match(
-            r"^(表|Table)\s*[0-9一二三四五六七八九十\.\-－—]+(?:\s|[:：．.、]|$)",
+            r"^(\u8868|Table)\s*[0-9\u4e00-\u9fff.\-\uFF0D\u2014]+(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
             t,
             flags=re.IGNORECASE,
         )
@@ -668,7 +669,7 @@ def cleanup_marker_styles(doc: Document):
 
 def apply_final_styles_from_markers(doc: Document, rules: dict) -> int:
     removed_numpr = 0
-    bullet_prefix_re = re.compile(r"^\s*[????????]+\s*")
+    bullet_prefix_re = re.compile(r"^\s*[\u25aa\u2022\u25cf\u25a0\u25c6\u25c7\u25e6\u00b7]+\s*")
     heading_align = {
         T_H1: rules.get("heading_1", {}).get("align", "center"),
         T_H2: rules.get("heading_2", {}).get("align", "left"),
@@ -858,11 +859,21 @@ class PipelineResult:
     chars_no_space: int
     removed_numpr_count: int
     classification_confidence: float
+    content_fingerprint_before: str = ""
+    content_fingerprint_after: str = ""
+    content_changed: bool = False
     logs: list[dict[str, Any]] = field(default_factory=list)
 
 
-def run_pipeline(input_docx: str | Path, output_docx: str | Path, rules: dict, write_marker_dump: Path | None = None) -> PipelineResult:
+def run_pipeline(
+    input_docx: str | Path,
+    output_docx: str | Path,
+    rules: dict,
+    write_marker_dump: Path | None = None,
+    enforce_content_guard: bool = True,
+) -> PipelineResult:
     doc = Document(str(input_docx))
+    fp_before = build_content_fingerprint(doc)
     setup_document_base(doc, rules)
 
     cls1 = classify_document(doc)
@@ -897,6 +908,19 @@ def run_pipeline(input_docx: str | Path, output_docx: str | Path, rules: dict, w
     cleanup_marker_styles(doc)
     logs.append({"action": "cleanup_marker_styles"})
 
+    fp_after = build_content_fingerprint(doc)
+    content_changed = fp_before != fp_after
+    logs.append(
+        {
+            "action": "content_guard",
+            "changed": content_changed,
+            "fingerprint_before": fp_before,
+            "fingerprint_after": fp_after,
+        }
+    )
+    if content_changed and enforce_content_guard:
+        raise ValueError("content guard failed: non-whitespace content changed")
+
     output_docx = Path(output_docx)
     output_docx.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_docx)
@@ -905,5 +929,8 @@ def run_pipeline(input_docx: str | Path, output_docx: str | Path, rules: dict, w
         chars_no_space=_count_chars(doc),
         removed_numpr_count=removed_numpr_count,
         classification_confidence=cls2.confidence,
+        content_fingerprint_before=fp_before,
+        content_fingerprint_after=fp_after,
+        content_changed=content_changed,
         logs=logs,
     )

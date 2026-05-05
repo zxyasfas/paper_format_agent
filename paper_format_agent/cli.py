@@ -9,10 +9,9 @@ from pathlib import Path
 
 from docx import Document
 
-from .llm import LLMConfig, generate_suggestions
-
 from .calibration import calibrate_from_labels
 from .engines import run_postprocess_engine
+from .llm import LLMConfig, generate_suggestions
 from .pipeline import run_pipeline
 from .rules import extract_rules_from_text
 from .scorer import save_reports, score_document
@@ -36,7 +35,6 @@ def read_format_text(path: str | Path) -> str:
     if path.suffix.lower() == ".txt":
         return path.read_text(encoding="utf-8", errors="ignore")
 
-    # Reuse adjacent converted copy if present (common for .doc sources).
     converted_adjacent = path.with_name(path.stem + "_converted.docx")
     if converted_adjacent.exists():
         return read_docx_text(converted_adjacent)
@@ -86,30 +84,39 @@ $word.Quit()
     return ""
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Paper Format Agent V3 (type-tag first)")
-    parser.add_argument("--format-file", help="格式要求文件（.doc/.docx/.txt）")
-    parser.add_argument("--paper-file", help="论文文件（.docx）")
-    parser.add_argument("--out-dir", required=True, help="输出目录")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Paper Format Agent CLI")
+    parser.add_argument("--format-file", help="format requirement file (.doc/.docx/.txt)")
+    parser.add_argument("--paper-file", help="paper file (.docx)")
+    parser.add_argument("--out-dir", required=True, help="output directory")
     parser.add_argument(
         "--engine",
         default="auto",
         choices=["auto", "python", "word-com", "libreoffice"],
-        help="排版后处理引擎",
+        help="post-process engine",
     )
-    parser.add_argument("--marker-dump", action="store_true", help="输出段落类型标注明细")
-    parser.add_argument("--calibration-file", default=None, help="评分校准参数 JSON 文件")
-    parser.add_argument("--strict-required-sections", action="store_true", help="严格按模板要求校验缺失章节")
+    parser.add_argument("--marker-dump", action="store_true", help="write paragraph type markers to marker_dump.json")
+    parser.add_argument("--calibration-file", default=None, help="scoring calibration JSON")
+    parser.add_argument("--strict-required-sections", action="store_true", help="enforce required sections from format file")
+    parser.add_argument(
+        "--allow-content-change",
+        action="store_true",
+        help="allow content fingerprint changes (NOT recommended for production)",
+    )
 
-    parser.add_argument("--use-llm", action="store_true", help="启用 LLM 建议（只建议，不改内容）")
+    parser.add_argument("--use-llm", action="store_true", help="enable LLM suggestions (advisory only)")
     parser.add_argument("--llm-api-key", default=None)
     parser.add_argument("--llm-base-url", default="https://api.deepseek.com")
     parser.add_argument("--llm-model", default="deepseek-v4-pro")
     parser.add_argument("--llm-timeout", type=int, default=90)
 
-    parser.add_argument("--calibrate-labels", default=None, help="校准模式：人工评分标签 JSON")
-    parser.add_argument("--calibrate-out", default=None, help="校准输出 JSON（默认 out-dir/scoring_calibration.json）")
+    parser.add_argument("--calibrate-labels", default=None, help="manual labels JSON for calibration")
+    parser.add_argument("--calibrate-out", default=None, help="output calibration JSON path")
+    return parser
 
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -140,13 +147,18 @@ def main():
 
     marker_dump = out_dir / "marker_dump.json" if args.marker_dump else None
     output_docx = out_dir / "formatted_paper_v3.docx"
-    run_result = run_pipeline(args.paper_file, output_docx, rules, write_marker_dump=marker_dump)
+    run_result = run_pipeline(
+        args.paper_file,
+        output_docx,
+        rules,
+        write_marker_dump=marker_dump,
+        enforce_content_guard=not bool(args.allow_content_change),
+    )
     (out_dir / "modify_log.json").write_text(json.dumps(run_result.logs, ensure_ascii=False, indent=2), encoding="utf-8")
 
     engine_report = run_postprocess_engine(args.engine, output_docx)
     (out_dir / "engine_report.json").write_text(json.dumps(engine_report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # 排版前评分（原始论文，传入自身作为 baseline 确保评分标准一致）
     report_before = score_document(
         args.paper_file,
         rules,
@@ -154,8 +166,6 @@ def main():
         baseline_docx=args.paper_file,
         enforce_required_sections=bool(args.strict_required_sections),
     )
-    
-    # 排版后评分（格式化后的论文）
     report_after = score_document(
         output_docx,
         rules,
@@ -163,8 +173,7 @@ def main():
         baseline_docx=args.paper_file,
         enforce_required_sections=bool(args.strict_required_sections),
     )
-    
-    # 合并报告
+
     report = report_after.copy()
     report["score_before"] = round(report_before["score"], 1)
     report["score_after"] = round(report_after["score"], 1)
@@ -176,6 +185,10 @@ def main():
     report["engine_report"] = engine_report
     report["removed_numpr_count"] = run_result.removed_numpr_count
     report["classification_confidence"] = run_result.classification_confidence
+    report["content_fingerprint_before"] = run_result.content_fingerprint_before
+    report["content_fingerprint_after"] = run_result.content_fingerprint_after
+    report["content_changed"] = bool(run_result.content_changed)
+    report["content_guard_enforced"] = not bool(args.allow_content_change)
     save_reports(report, out_dir / "format_report.json", out_dir / "format_report.html")
 
     print(
@@ -189,6 +202,8 @@ def main():
                 "chars_no_space_before": report["chars_no_space_before"],
                 "chars_no_space_after": report["chars_no_space_after"],
                 "removed_numpr_count": run_result.removed_numpr_count,
+                "content_changed": bool(run_result.content_changed),
+                "content_guard_enforced": not bool(args.allow_content_change),
                 "engine": engine_report.get("engine", args.engine),
                 "engine_success": bool(engine_report.get("success")),
                 "llm_used": bool(llm_report.get("used")),
@@ -201,3 +216,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
