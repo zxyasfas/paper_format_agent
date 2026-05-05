@@ -99,6 +99,47 @@ def _prefix_toc_stats(doc: Document, idx_abs: int | None) -> dict[str, float]:
     }
 
 
+def _toc_heading_leak(doc: Document, idx_toc: int | None) -> int:
+    """Count heading-styled TOC lines after TOC title."""
+    if idx_toc is None:
+        return 0
+
+    paras = list(doc.paragraphs)
+    heading_like = 0
+    short_non_empty = 0
+    empty_run = 0
+
+    for j in range(idx_toc + 1, len(paras)):
+        p = paras[j]
+        t = (p.text or "").strip()
+        if not t:
+            empty_run += 1
+            if short_non_empty >= 5 and empty_run >= 3:
+                break
+            continue
+
+        empty_run = 0
+        nt = normalize_text(t)
+        if len(nt) <= 80:
+            short_non_empty += 1
+            style_name = (p.style.name if p.style else "")
+            if style_name.startswith("Heading"):
+                heading_like += 1
+        else:
+            # Long body paragraph likely means TOC area ended.
+            if short_non_empty >= 5:
+                break
+
+        if short_non_empty >= 80:
+            break
+
+    if short_non_empty < 5:
+        return 0
+    if heading_like < 3:
+        return 0
+    return heading_like
+
+
 def score_document(
     docx_path: str | Path,
     rules: dict,
@@ -159,6 +200,7 @@ def score_document(
     )
     blank_risk = _page_break_blank_risk(doc)
     prefix_toc = _prefix_toc_stats(doc, idx_abs)
+    toc_heading_leak = _toc_heading_leak(doc, idx_toc)
 
     penalties: list[dict[str, Any]] = []
 
@@ -192,6 +234,8 @@ def score_document(
         penalties.append({"name": "marker_left", "value": min(10, marker_left)})
     if heading_body_leak > 0:
         penalties.append({"name": "heading_body_leak", "value": min(16, heading_body_leak * 2)})
+    if toc_heading_leak > 0:
+        penalties.append({"name": "toc_heading_leak", "value": min(24, toc_heading_leak * 2)})
     if blank_risk > 0:
         penalties.append({"name": "blank_page_risk", "value": min(15, blank_risk * 3)})
 
@@ -252,6 +296,7 @@ def score_document(
             "numpr_left": numpr_left,
             "marker_left": marker_left,
             "heading_body_leak": heading_body_leak,
+            "toc_heading_leak": toc_heading_leak,
             "blank_page_risk": blank_risk,
             "prefix_non_empty_before_abs": prefix_toc["non_empty"],
             "prefix_toc_like_before_abs": prefix_toc["toc_like"],

@@ -35,6 +35,12 @@ def read_format_text(path: str | Path) -> str:
         return read_docx_text(path)
     if path.suffix.lower() == ".txt":
         return path.read_text(encoding="utf-8", errors="ignore")
+
+    # Reuse adjacent converted copy if present (common for .doc sources).
+    converted_adjacent = path.with_name(path.stem + "_converted.docx")
+    if converted_adjacent.exists():
+        return read_docx_text(converted_adjacent)
+
     with tempfile.TemporaryDirectory() as td:
         out_dir = Path(td)
         try:
@@ -46,6 +52,33 @@ def read_format_text(path: str | Path) -> str:
                 timeout=90,
             )
             converted = out_dir / f"{path.stem}.docx"
+            if converted.exists():
+                return read_docx_text(converted)
+        except Exception:
+            pass
+
+        # Fallback: Word COM conversion on Windows.
+        try:
+            converted = out_dir / f"{path.stem}.docx"
+            ps = rf"""
+$ErrorActionPreference = "Stop"
+$src = "{str(path.resolve())}"
+$dst = "{str(converted.resolve())}"
+$word = New-Object -ComObject Word.Application
+$word.Visible = $false
+$word.DisplayAlerts = 0
+$doc = $word.Documents.Open($src, $false, $true)
+$doc.SaveAs([ref]$dst, [ref]16)
+$doc.Close()
+$word.Quit()
+"""
+            subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=120,
+            )
             if converted.exists():
                 return read_docx_text(converted)
         except Exception:

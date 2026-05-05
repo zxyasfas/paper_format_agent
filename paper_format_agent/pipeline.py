@@ -33,6 +33,8 @@ T_H3 = "H3"
 T_REF_TITLE = "REF_TITLE"
 T_REF_ENTRY = "REF_ENTRY"
 T_ACK_TITLE = "ACK_TITLE"
+T_FIG_CAPTION = "FIG_CAPTION"
+T_TABLE_CAPTION = "TABLE_CAPTION"
 
 
 def normalize_text(text: str) -> str:
@@ -40,7 +42,8 @@ def normalize_text(text: str) -> str:
 
 
 def is_abstract_title(text: str) -> bool:
-    return bool(re.fullmatch(r"摘\s*要", (text or "").strip()))
+    t = normalize_text(text)
+    return t == "\u6458\u8981"
 
 
 def is_english_abstract_title(text: str) -> bool:
@@ -48,29 +51,31 @@ def is_english_abstract_title(text: str) -> bool:
 
 
 def is_keyword_zh(text: str) -> bool:
-    return bool(re.match(r"^(关键词|关键字)\s*[:：]", (text or "").strip()))
+    # Chinese keywords line: "关键词/关键字:"
+    return bool(re.match(r"^(\u5173\u952e\u8bcd|\u5173\u952e\u5b57)\s*[:\uff1a]", (text or "").strip()))
 
 
 def is_keyword_en(text: str) -> bool:
-    return bool(re.match(r"^Keywords?\s*[:：]", (text or "").strip(), flags=re.IGNORECASE))
+    return bool(re.match(r"^Keywords?\s*[:\uff1a]", (text or "").strip(), flags=re.IGNORECASE))
 
 
 def is_toc_title(text: str) -> bool:
-    return normalize_text(text) in {"目录", "目錄", "目次"}
+    return normalize_text(text) in {"\u76ee\u5f55", "\u76ee\u6b21", "\u76ee\u5f55\u9875"}
 
 
 def is_references(text: str) -> bool:
-    return "参考文献" in normalize_text(text)
+    nt = normalize_text(text)
+    return ("\u53c2\u8003\u6587\u732e" in nt) or ("references" in nt.lower())
 
 
 def is_ack(text: str) -> bool:
     nt = normalize_text(text)
-    return "致谢" in nt or "致謝" in nt
+    return ("\u81f4\u8c22" in nt) or ("\u81f4\u8b1d" in nt) or ("acknowledg" in nt.lower())
 
 
 def is_intro_like(text: str) -> bool:
     nt = normalize_text(text)
-    return "绪论" in nt or "引言" in nt
+    return ("\u7eea\u8bba" in nt) or ("\u5f15\u8a00" in nt) or (nt.lower() == "introduction")
 
 
 def looks_like_reference_entry(text: str) -> bool:
@@ -79,7 +84,7 @@ def looks_like_reference_entry(text: str) -> bool:
         return False
     if re.match(r"^\[\d+\]", t):
         return True
-    if re.match(r"^\d+\s*[\.、)]", t):
+    if re.match(r"^\d+\s*[\.\u3001\uff0e)]", t):
         return True
     if "DOI" in t.upper():
         return True
@@ -90,21 +95,22 @@ def looks_like_reference_entry(text: str) -> bool:
 
 def is_chapter(text: str) -> bool:
     s = (text or "").strip()
-    return bool(re.match(r"^第[一二三四五六七八九十0-9]+章", s)) or bool(re.match(r"^[一二三四五六七八九十]+、", s))
+    return bool(
+        re.match(
+            r"^(\u7b2c[\u4e00-\u9fff0-9]+[\u7ae0\u8282]|[\u4e00-\u9fff]{1,4}[\u3001.\uff0e]|[IVXLC]+\s*[.\u3001])\s*",
+            s,
+        )
+    )
 
 
 def is_section(text: str) -> bool:
     s = (text or "").strip()
-    return bool(re.match(r"^\d+\.\d+\s*", s)) or bool(re.match(r"^第[一二三四五六七八九十]+节", s))
+    return bool(re.match(r"^\d+\.\d+(?!\.)\s*", s))
 
 
 def is_subsection(text: str) -> bool:
     s = (text or "").strip()
-    return (
-        bool(re.match(r"^\d+\.\d+\.\d+\s*", s))
-        or bool(re.match(r"^\d+\.\s*", s))
-        or bool(re.match(r"^（[一二三四五六七八九十]+）", s))
-    )
+    return bool(re.match(r"^\d+\.\d+\.\d+\s*", s))
 
 
 def looks_like_toc_entry(text: str) -> bool:
@@ -112,21 +118,106 @@ def looks_like_toc_entry(text: str) -> bool:
     if not t:
         return True
     nt = normalize_text(t)
-    if re.search(r"[·\.…]{3,}\s*\d+\s*$", t):
+    if re.search(r"[\u00b7.\u3002\u2026]{3,}\s*\d+\s*$", t):
         return True
-    if bool(re.match(r"^[一二三四五六七八九十]+、", t)):
+    if bool(re.match(r"^[\u4e00-\u9fff]{1,6}[\u3001.\uff0e]", t)):
         return True
-    if bool(re.match(r"^[（(][一二三四五六七八九十]+[）)]", t)):
+    if bool(re.match(r"^[\uff08(][\u4e00-\u9fff]{1,4}[\uff09)]", t)):
         return True
     if bool(re.match(r"^\d+(\.\d+)*\s+", t)):
         return True
     if bool(re.match(r"^\d+\.(\d+\.)*\d*[^0-9\s]", t)):
         return True
-    if bool(re.match(r"^第[一二三四五六七八九十0-9]+[章节]", t)):
+    if bool(re.match(r"^\u7b2c[\u4e00-\u9fff0-9]+[\u7ae0\u8282]", t)):
         return True
     if len(nt) <= 40 and (is_chapter(t) or is_section(t) or is_subsection(t) or is_intro_like(t)):
         return True
     return False
+
+
+def is_figure_caption(text: str) -> bool:
+    t = (text or "").strip()
+    if len(normalize_text(t)) > 90:
+        return False
+    return bool(
+        re.match(
+            r"^(图|Fig\.?)\s*[0-9一二三四五六七八九十\.\-－—]+(?:\s|[:：．.、]|$)",
+            t,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def is_table_caption(text: str) -> bool:
+    t = (text or "").strip()
+    if len(normalize_text(t)) > 90:
+        return False
+    return bool(
+        re.match(
+            r"^(表|Table)\s*[0-9一二三四五六七八九十\.\-－—]+(?:\s|[:：．.、]|$)",
+            t,
+            flags=re.IGNORECASE,
+        )
+    )
+
+
+def detect_toc_range_after_title(paras: list, title_idx: int) -> tuple[int, int] | None:
+    """Detect TOC entry block following a TOC title."""
+    start: int | None = None
+    last: int | None = None
+    non_empty = 0
+    toc_like = 0
+    empty_run = 0
+
+    for j in range(title_idx + 1, len(paras)):
+        t = (paras[j].text or "").strip()
+        if not t:
+            empty_run += 1
+            if start is not None and toc_like >= 5 and empty_run >= 3:
+                break
+            continue
+
+        empty_run = 0
+        nt = normalize_text(t)
+        nt_len = len(nt)
+        sentence_marks = len(re.findall(r"[\u3002\uff01\uff1f!?\uff1b;]", nt))
+        strong_body = nt_len >= 80 or (nt_len >= 56 and sentence_marks >= 2)
+
+        if is_toc_title(t) or is_abstract_title(t) or is_english_abstract_title(t) or is_references(t) or is_ack(t):
+            break
+
+        chapter_like = is_chapter(t) or is_section(t) or is_subsection(t) or is_intro_like(t)
+        entry_like = looks_like_toc_entry(t) or chapter_like or nt_len <= 42
+
+        if start is None:
+            if not entry_like:
+                return None
+            start = j
+            last = j
+            non_empty += 1
+            toc_like += 1
+            continue
+
+        if strong_body and toc_like >= 5:
+            break
+
+        if entry_like or (nt_len <= 60 and sentence_marks <= 1 and not strong_body):
+            non_empty += 1
+            if entry_like:
+                toc_like += 1
+            last = j
+            continue
+
+        if toc_like >= 5:
+            break
+        return None
+
+    if start is None or last is None or non_empty < 4:
+        return None
+    ratio = toc_like / non_empty if non_empty else 0.0
+    if ratio < 0.68:
+        return None
+    return (start, last + 1)
 
 
 def clear_paragraph_numbering(paragraph) -> bool:
@@ -136,6 +227,24 @@ def clear_paragraph_numbering(paragraph) -> bool:
         ppr.remove(numpr)
         return True
     return False
+
+
+def is_in_table_cell(paragraph) -> bool:
+    try:
+        return bool(paragraph._p.xpath("./ancestor::w:tc"))
+    except Exception:
+        return False
+
+
+def collapse_soft_breaks(text: str, joiner: str = "") -> str:
+    if not text:
+        return text
+    if ("\n" not in text) and ("\r" not in text):
+        return text
+    parts = [x.strip() for x in re.split(r"[\r\n]+", text) if x.strip()]
+    if not parts:
+        return ""
+    return joiner.join(parts)
 
 
 def ensure_style(doc: Document, name: str, font: str, size_pt: float, bold: bool = False, alignment: str | None = None):
@@ -209,9 +318,30 @@ def setup_document_base(doc: Document, rules: dict):
     rfonts.set(qn("w:hAnsi"), rules["body"]["font"])
 
     ensure_style(doc, "Title", rules["toc"]["font"], rules["toc"]["title_size_pt"], True, "center")
-    ensure_style(doc, "Heading 1", rules["heading_1"]["font"], rules["heading_1"]["size_pt"], True, "center")
-    ensure_style(doc, "Heading 2", rules["heading_2"]["font"], rules["heading_2"]["size_pt"], True, "center")
-    ensure_style(doc, "Heading 3", rules["heading_3"]["font"], rules["heading_3"]["size_pt"], True, "left")
+    ensure_style(
+        doc,
+        "Heading 1",
+        rules["heading_1"]["font"],
+        rules["heading_1"]["size_pt"],
+        True,
+        rules["heading_1"].get("align", "center"),
+    )
+    ensure_style(
+        doc,
+        "Heading 2",
+        rules["heading_2"]["font"],
+        rules["heading_2"]["size_pt"],
+        True,
+        rules["heading_2"].get("align", "left"),
+    )
+    ensure_style(
+        doc,
+        "Heading 3",
+        rules["heading_3"]["font"],
+        rules["heading_3"]["size_pt"],
+        True,
+        rules["heading_3"].get("align", "left"),
+    )
 
     for section in doc.sections:
         section.page_height = Cm(29.7)
@@ -317,18 +447,50 @@ def classify_document(doc: Document) -> Classification:
             types[i] = T_REF_TITLE
         elif is_ack(t):
             types[i] = T_ACK_TITLE
+        elif is_figure_caption(t):
+            types[i] = T_FIG_CAPTION
+        elif is_table_caption(t):
+            types[i] = T_TABLE_CAPTION
+
+    # Mark TOC entries right after each TOC title.
+    toc_ranges: list[tuple[int, int]] = []
+    for i, tp in enumerate(types):
+        if tp != T_TOC_TITLE:
+            continue
+        rng = detect_toc_range_after_title(paras, i)
+        if rng is None:
+            continue
+        s, e = rng
+        toc_ranges.append(rng)
+        for j in range(s, e):
+            if (paras[j].text or "").strip():
+                types[j] = T_TOC_ENTRY
+    if toc_ranges:
+        notes.append(f"toc_ranges_after_title={toc_ranges}")
 
     # Heading class for non-front-matter lines.
     for i, p in enumerate(paras):
-        if types[i] in {T_TOC_TITLE, T_TOC_ENTRY, T_ABS_ZH_TITLE, T_ABS_EN_TITLE, T_KW_ZH, T_KW_EN, T_REF_TITLE, T_ACK_TITLE, T_EMPTY}:
+        if types[i] in {
+            T_TOC_TITLE,
+            T_TOC_ENTRY,
+            T_ABS_ZH_TITLE,
+            T_ABS_EN_TITLE,
+            T_KW_ZH,
+            T_KW_EN,
+            T_REF_TITLE,
+            T_ACK_TITLE,
+            T_FIG_CAPTION,
+            T_TABLE_CAPTION,
+            T_EMPTY,
+        }:
             continue
         t = (p.text or "").strip()
         if is_chapter(t) or is_intro_like(t):
             types[i] = T_H1
-        elif is_section(t):
-            types[i] = T_H2
         elif is_subsection(t):
             types[i] = T_H3
+        elif is_section(t):
+            types[i] = T_H2
 
     # Mark abstract bodies via boundary scan.
     def mark_body_after(title_type: str, body_type: str, break_types: set[str]):
@@ -473,6 +635,8 @@ def ensure_marker_styles(doc: Document):
         T_REF_TITLE,
         T_REF_ENTRY,
         T_ACK_TITLE,
+        T_FIG_CAPTION,
+        T_TABLE_CAPTION,
     ]:
         name = MARK_PREFIX + t
         try:
@@ -504,13 +668,21 @@ def cleanup_marker_styles(doc: Document):
 
 def apply_final_styles_from_markers(doc: Document, rules: dict) -> int:
     removed_numpr = 0
-    bullet_prefix_re = re.compile(r"^\s*[▪•■●◦]+\s*")
+    bullet_prefix_re = re.compile(r"^\s*[????????]+\s*")
+    heading_align = {
+        T_H1: rules.get("heading_1", {}).get("align", "center"),
+        T_H2: rules.get("heading_2", {}).get("align", "left"),
+        T_H3: rules.get("heading_3", {}).get("align", "left"),
+    }
+
     for p in doc.paragraphs:
         if clear_paragraph_numbering(p):
             removed_numpr += 1
         p.paragraph_format.page_break_before = False
+
         style_name = p.style.name if p.style else ""
         text = (p.text or "").strip()
+        in_table = is_in_table_cell(p)
         tp = style_name[len(MARK_PREFIX) :] if style_name.startswith(MARK_PREFIX) else None
         if tp is None:
             tp = T_EMPTY if not text else T_BODY
@@ -523,10 +695,51 @@ def apply_final_styles_from_markers(doc: Document, rules: dict) -> int:
                 p.text = cleaned
                 text = cleaned.strip()
 
+        # Collapse manual line-break noise in headings/captions/table cells.
+        original2 = p.text or ""
+        if in_table:
+            cleaned2 = collapse_soft_breaks(original2, joiner="")
+        elif tp in {
+            T_ABS_ZH_TITLE,
+            T_ABS_EN_TITLE,
+            T_TOC_TITLE,
+            T_TOC_ENTRY,
+            T_H1,
+            T_H2,
+            T_H3,
+            T_REF_TITLE,
+            T_ACK_TITLE,
+            T_KW_ZH,
+            T_KW_EN,
+            T_FIG_CAPTION,
+            T_TABLE_CAPTION,
+        }:
+            cleaned2 = collapse_soft_breaks(original2, joiner="")
+        else:
+            cleaned2 = original2
+        if cleaned2 != original2:
+            p.text = cleaned2
+            text = cleaned2.strip()
+
         if tp == T_EMPTY:
             p.style = doc.styles["Normal"]
             p.paragraph_format.space_before = Pt(0)
             p.paragraph_format.space_after = Pt(0)
+            continue
+
+        # Keep table content stable: no first-line indent, left align.
+        if in_table:
+            p.style = doc.styles["Normal"]
+            tb = rules.get("table_body", {})
+            set_run_style(p, tb.get("font", rules["body"]["font"]), tb.get("size_pt", rules["body"]["size_pt"]), False)
+            set_para_format(
+                p,
+                align=tb.get("align", "left"),
+                line_spacing=tb.get("line_spacing", rules["body"]["line_spacing"]),
+                indent_chars=0,
+                space_before=0,
+                space_after=0,
+            )
             continue
 
         if tp == T_ABS_ZH_TITLE:
@@ -552,15 +765,25 @@ def apply_final_styles_from_markers(doc: Document, rules: dict) -> int:
         elif tp == T_H1:
             p.style = doc.styles["Heading 1"]
             set_run_style(p, rules["heading_1"]["font"], rules["heading_1"]["size_pt"], True)
-            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=12, space_after=12)
+            set_para_format(p, align=heading_align[T_H1], line_spacing=1.25, indent_chars=0, space_before=12, space_after=12)
         elif tp == T_H2:
             p.style = doc.styles["Heading 2"]
             set_run_style(p, rules["heading_2"]["font"], rules["heading_2"]["size_pt"], True)
-            set_para_format(p, align="center", line_spacing=1.25, indent_chars=0, space_before=6, space_after=6)
+            set_para_format(p, align=heading_align[T_H2], line_spacing=1.25, indent_chars=0, space_before=6, space_after=6)
         elif tp == T_H3:
             p.style = doc.styles["Heading 3"]
             set_run_style(p, rules["heading_3"]["font"], rules["heading_3"]["size_pt"], True)
-            set_para_format(p, align="left", line_spacing=1.25, indent_chars=0, space_before=6, space_after=6)
+            set_para_format(p, align=heading_align[T_H3], line_spacing=1.25, indent_chars=0, space_before=6, space_after=6)
+        elif tp == T_FIG_CAPTION:
+            cap = rules.get("figure_caption", {})
+            p.style = doc.styles["Normal"]
+            set_run_style(p, cap.get("font", rules["body"]["font"]), cap.get("size_pt", 10.5), bool(cap.get("bold", False)))
+            set_para_format(p, align=cap.get("align", "center"), line_spacing=1.0, indent_chars=0, space_before=6, space_after=6)
+        elif tp == T_TABLE_CAPTION:
+            cap = rules.get("table_caption", {})
+            p.style = doc.styles["Normal"]
+            set_run_style(p, cap.get("font", rules["body"]["font"]), cap.get("size_pt", 10.5), bool(cap.get("bold", False)))
+            set_para_format(p, align=cap.get("align", "center"), line_spacing=1.0, indent_chars=0, space_before=6, space_after=6)
         elif tp == T_TOC_ENTRY:
             p.style = doc.styles["Normal"]
             set_run_style(p, rules["toc"]["font"], rules["toc"]["body_size_pt"], False)
@@ -607,7 +830,7 @@ def apply_final_styles_from_markers(doc: Document, rules: dict) -> int:
             set_run_style(p, font, rules["body"]["size_pt"], False)
             set_para_format(
                 p,
-                align="justify",
+                align=rules["body"].get("alignment", "justify"),
                 line_spacing=rules["body"]["line_spacing"],
                 indent_chars=rules["body"]["first_line_indent_chars"],
                 space_before=0,
