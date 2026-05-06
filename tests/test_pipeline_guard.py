@@ -33,7 +33,30 @@ class PipelineContentGuardTests(unittest.TestCase):
             self.assertFalse(result.content_changed)
             self.assertTrue(out.exists())
 
+    def test_pipeline_writes_header_and_page_number_footer(self):
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            src = td_path / "input.docx"
+            out = td_path / "out.docx"
+
+            doc = Document()
+            doc.add_paragraph("Abstract")
+            doc.add_paragraph("Body paragraph.")
+            doc.save(src)
+
+            rules = extract_rules_from_text("")
+            rules["header"]["text"] = "Journal Draft"
+            result = run_pipeline(src, out, rules, enforce_content_guard=True)
+
+            formatted = Document(str(out))
+            section = formatted.sections[0]
+            self.assertEqual(section.header.paragraphs[0].text, "Journal Draft")
+            self.assertIn("PAGE", section.footer._element.xml)
+            self.assertFalse(result.content_changed)
+            self.assertEqual(result.logs[0]["action"], "setup_document_base")
+            self.assertEqual(result.logs[0]["headers_written"], 1)
+            self.assertEqual(result.logs[0]["footers_written"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
-

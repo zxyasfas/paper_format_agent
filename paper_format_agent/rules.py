@@ -67,6 +67,7 @@ DEFAULT_RULES = {
     "table_caption": {"font": ZH_SONGTI, "size_pt": 10.5, "bold": False, "align": "center"},
     "table_body": {"font": ZH_SONGTI, "size_pt": 12, "line_spacing": 1.25, "align": "left"},
     "header": {"text": "\u672c\u79d1\u6bd5\u4e1a\u8bba\u6587", "font": ZH_SONGTI, "size_pt": 9},
+    "footer": {"page_number": True, "font": ZH_SONGTI, "size_pt": 9},
     "min_total_chars_no_space": 10000,
     "required_sections": {
         "zh_abstract": True,
