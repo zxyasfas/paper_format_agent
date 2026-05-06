@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contribution guide
+    url: https://github.com/zxyasfas/paper_format_agent/blob/main/CONTRIBUTING.md
+    about: Read this before opening a PR.

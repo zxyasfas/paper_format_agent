@@ -1,27 +1,43 @@
-﻿# Roadmap
+# Roadmap
+
+This roadmap is organized to create many small PR opportunities.
+
+## Good First PRs
+
+- [ ] Add synthetic tests for IEEE-style heading and caption rules.
+- [ ] Add synthetic tests for APA-style reference spacing rules.
+- [ ] Add synthetic tests for Chinese thesis abstract and keyword variants.
+- [ ] Improve `format_report.html` wording for failed checks.
+- [ ] Add examples to `docs/regression_manifest.sample.json`.
+- [ ] Improve `SKILL.md` with more precise agent review steps.
 
 ## Near Term
 
-- [ ] 增强跨学校模板抽取能力（章节顺序、编号体系）
-- [ ] 增加图表、公式、脚注格式规则
-- [ ] 引入批量处理 CLI（目录模式）
-- [ ] 增加更细粒度评分解释
+- [ ] Batch CLI for folders of papers.
+- [ ] Stronger template extraction for section order and numbering systems.
+- [ ] More granular scoring explanations.
+- [ ] Table, figure, equation, footnote, header, and footer checks.
+- [ ] Minimal MCP server wrapper for local agent integration.
+- [ ] GitHub Action example for formatting checks in PRs.
 
 ## Mid Term
 
-- [ ] Web UI / Desktop UI
-- [ ] 模板市场（学校规则包）
-- [ ] 自动回归评测集（匿名样本）
+- [ ] Public synthetic benchmark corpus.
+- [ ] Template packs for schools, journals, and conferences.
+- [ ] Rule plugin interface.
+- [ ] Render-and-compare PDF visual QA.
+- [ ] Better cross-platform post-processing with LibreOffice.
 
 ## Long Term
 
-- [ ] 插件化规则引擎
-- [ ] 多语言论文格式支持
-- [ ] 企业版审计看板
+- [ ] Multi-language paper formatting support.
+- [ ] Web/Desktop review UI.
+- [ ] Enterprise audit dashboard.
+- [ ] Marketplace-style template registry.
 
-## 1000 Stars Plan
+## Growth Plan
 
-- 发布可复现 demo 与 benchmark
-- 每周修复高频格式问题
-- 提供真实案例（脱敏）前后对比
-- 完善文档、降低上手门槛
+- Keep the first-run path under five minutes.
+- Make every template rule request easy to turn into a PR.
+- Publish reproducible demos using synthetic documents.
+- Prefer many small contributor-friendly issues over large opaque milestones.
