@@ -11,9 +11,13 @@ This roadmap is organized to create many small PR opportunities.
 - [ ] Add examples to `docs/regression_manifest.sample.json`.
 - [ ] Improve `SKILL.md` with more precise agent review steps.
 
+## Recently Added
+
+- [x] Batch CLI for folders of papers.
+- [x] Release audit for tracked generated files, local scratch files, caches, and secret-like files.
+
 ## Near Term
 
-- [ ] Batch CLI for folders of papers.
 - [ ] Stronger template extraction for section order and numbering systems.
 - [ ] More granular scoring explanations.
 - [ ] Table, figure, equation, footnote, header, and footer checks.

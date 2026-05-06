@@ -20,6 +20,8 @@
 4. **Ops Gate**
 - CI must run unit tests on every push/PR.
 - Regression runner must be executable in staging before release.
+- Batch runs must emit a machine-readable `batch_summary.json`.
+- Release audit must pass with no tracked local outputs, cache files, secrets, or private document artifacts.
 - Versioned release notes must record rule changes and score impact.
 
 ## Required Commands
@@ -32,10 +34,12 @@ python -m unittest discover -s tests -p "test_*.py"
 python tools/regression_runner.py \
   --manifest docs/regression_manifest.sample.json \
   --out-dir sample_output/regression_ci
+
+# Release hygiene
+python tools/release_audit.py
 ```
 
 ## Current Scope
 
 - Program is format-focused. It does not rewrite thesis semantics.
 - LLM module is advisory by default and should not mutate original content.
-

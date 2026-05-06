@@ -51,6 +51,7 @@ Run these before handing work back:
 python tools/validate_skill.py
 python -m unittest discover -s tests -p "test_*.py"
 python tools/compile_check.py
+python tools/release_audit.py
 ```
 
 ## When Adding Template Support

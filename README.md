@@ -1,8 +1,19 @@
 # Paper Format Agent
 
+[中文说明](README.zh-CN.md) | English
+
+![Local-first](https://img.shields.io/badge/local--first-DOCX-blue)
+![Content Guard](https://img.shields.io/badge/content--guard-enabled-green)
+![Python](https://img.shields.io/badge/python-3.9%2B-3776AB)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
 Local-first academic paper formatting for DOCX files, packaged as both a Python tool and an agent skill.
 
 Paper Format Agent extracts formatting rules from a guide, applies deterministic DOCX repairs, and produces machine-readable plus human-readable reports. It is built for thesis, journal, and conference formatting workflows where privacy and content preservation matter.
+
+## Status
+
+This project is a practical open-source MVP moving toward commercial readiness. It is suitable for demos, internal pilots, agent workflows, and synthetic benchmark development. Before paid production use, expand the regression corpus, template coverage, and object-level scoring for tables, figures, equations, footnotes, headers, and footers.
 
 ## Why This Exists
 
@@ -46,6 +57,19 @@ Optional GUI:
 python run_gui.py
 ```
 
+Batch processing:
+
+```bash
+python -m paper_format_agent.cli \
+  --format-file "format_guide.docx" \
+  --paper-dir "./papers" \
+  --out-dir "./batch_output" \
+  --engine python \
+  --strict-required-sections
+```
+
+Batch mode writes one output folder per paper plus `batch_summary.json`, including pass rate, score averages, content-change count, and per-paper report locations.
+
 ## Outputs
 
 | File | Purpose |
@@ -76,6 +100,7 @@ For normal academic formatting, `content_changed` should be `false`.
 python tools/validate_skill.py
 python -m unittest discover -s tests -p "test_*.py"
 python tools/compile_check.py
+python tools/release_audit.py
 ```
 
 ## Good First PRs
