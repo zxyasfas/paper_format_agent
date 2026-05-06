@@ -1,0 +1,3 @@
+display_name: Paper Format Agent
+short_description: Inspect, repair, and score academic paper formatting from local DOCX files.
+default_prompt: Check this paper against the format guide, repair formatting only, and report the score, changed files, and any remaining risks.
