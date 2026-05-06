@@ -9,6 +9,7 @@ Paper Format Agent extracts formatting rules from a guide, applies deterministic
 Academic formatting is tedious, repetitive, and hard to review manually. This project focuses on formatting-only automation:
 
 - margins, fonts, line spacing, headings, captions, tables, and references
+- generated running headers and centered page-number footers
 - required section checks such as abstracts, keywords, and table of contents
 - content fingerprint guards to detect accidental academic content changes
 - local execution for private papers and school templates

@@ -9,6 +9,7 @@ from typing import Any
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
@@ -303,7 +304,71 @@ def set_para_format(paragraph, *, align: str, line_spacing: float, indent_chars:
     paragraph.paragraph_format.space_after = Pt(space_after)
 
 
-def setup_document_base(doc: Document, rules: dict):
+def _clear_paragraph(paragraph):
+    paragraph.text = ""
+
+
+def _add_page_number_field(paragraph, font: str, size_pt: float):
+    run = paragraph.add_run()
+    run.font.name = font
+    set_font_east_asia(run, font)
+    run.font.size = Pt(size_pt)
+
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+
+    instr = OxmlElement("w:instrText")
+    instr.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    instr.text = " PAGE "
+
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+
+    run._r.append(begin)
+    run._r.append(instr)
+    run._r.append(separate)
+    run._r.append(end)
+
+
+def apply_header_footer(doc: Document, rules: dict) -> dict[str, int]:
+    header_cfg = rules.get("header", {})
+    footer_cfg = rules.get("footer", {})
+    header_text = str(header_cfg.get("text", "") or "").strip()
+    header_font = header_cfg.get("font", rules["body"]["font"])
+    header_size = float(header_cfg.get("size_pt", 9))
+    footer_font = footer_cfg.get("font", header_font)
+    footer_size = float(footer_cfg.get("size_pt", header_size))
+    add_page_number = bool(footer_cfg.get("page_number", True))
+
+    headers_written = 0
+    footers_written = 0
+    for section in doc.sections:
+        if header_text:
+            header = section.header
+            paragraph = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+            _clear_paragraph(paragraph)
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = paragraph.add_run(header_text)
+            run.font.name = header_font
+            set_font_east_asia(run, header_font)
+            run.font.size = Pt(header_size)
+            headers_written += 1
+
+        if add_page_number:
+            footer = section.footer
+            paragraph = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+            _clear_paragraph(paragraph)
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            _add_page_number_field(paragraph, footer_font, footer_size)
+            footers_written += 1
+
+    return {"headers_written": headers_written, "footers_written": footers_written}
+
+
+def setup_document_base(doc: Document, rules: dict) -> dict[str, int]:
     normal = doc.styles["Normal"]
     normal.font.name = rules["body"]["font"]
     normal.font.size = Pt(rules["body"]["size_pt"])
@@ -351,6 +416,7 @@ def setup_document_base(doc: Document, rules: dict):
         section.bottom_margin = Cm(rules["margins_cm"]["bottom"])
         section.left_margin = Cm(rules["margins_cm"]["left"])
         section.right_margin = Cm(rules["margins_cm"]["right"])
+    return apply_header_footer(doc, rules)
 
 
 @dataclass
@@ -874,10 +940,13 @@ def run_pipeline(
 ) -> PipelineResult:
     doc = Document(str(input_docx))
     fp_before = build_content_fingerprint(doc)
-    setup_document_base(doc, rules)
+    base_result = setup_document_base(doc, rules)
 
     cls1 = classify_document(doc)
-    logs = [{"action": "classify_pass_1", "confidence": cls1.confidence, "notes": cls1.notes}]
+    logs = [
+        {"action": "setup_document_base", **base_result},
+        {"action": "classify_pass_1", "confidence": cls1.confidence, "notes": cls1.notes},
+    ]
     reorder_logs, moved_toc_range = reorder_by_types(doc, cls1)
     logs.extend(reorder_logs)
 
