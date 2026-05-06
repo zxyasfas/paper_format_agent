@@ -65,6 +65,7 @@ By default, the pipeline enforces a content guard. Reports include:
 - `content_guard_enforced`
 - `content_fingerprint_before`
 - `content_fingerprint_after`
+- `diagnostics` with severity, evidence, and suggested fixes for failed checks
 
 For normal academic formatting, `content_changed` should be `false`.
 

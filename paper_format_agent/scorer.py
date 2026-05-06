@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,172 @@ from .pipeline import (
     is_toc_title,
     normalize_text,
 )
+
+
+DIAGNOSTIC_CATALOG: dict[str, dict[str, str]] = {
+    "missing_zh_abs": {
+        "category": "required_sections",
+        "severity": "high",
+        "summary": "Chinese abstract section is missing.",
+        "suggested_fix": "Add a standalone Chinese abstract title before body text.",
+    },
+    "missing_zh_keywords": {
+        "category": "required_sections",
+        "severity": "medium",
+        "summary": "Chinese keywords line is missing.",
+        "suggested_fix": "Add a keywords line after the Chinese abstract, for example 'Keywords: ...' in the required language.",
+    },
+    "missing_en_abs": {
+        "category": "required_sections",
+        "severity": "medium",
+        "summary": "English abstract section is missing.",
+        "suggested_fix": "Add an 'Abstract' section after the Chinese abstract and keywords when the template requires it.",
+    },
+    "missing_en_keywords": {
+        "category": "required_sections",
+        "severity": "medium",
+        "summary": "English keywords line is missing.",
+        "suggested_fix": "Add a 'Keywords:' line after the English abstract.",
+    },
+    "missing_toc_title": {
+        "category": "required_sections",
+        "severity": "low",
+        "summary": "Table of contents title is missing.",
+        "suggested_fix": "Insert a table of contents title using the wording required by the format guide.",
+    },
+    "abstract_after_body": {
+        "category": "front_matter_order",
+        "severity": "high",
+        "summary": "Abstract appears after body content.",
+        "suggested_fix": "Move the abstract and keyword sections before the introduction or first body heading.",
+    },
+    "prefix_manual_toc_before_abs": {
+        "category": "front_matter_order",
+        "severity": "high",
+        "summary": "Manual table of contents appears before the abstract.",
+        "suggested_fix": "Move the table of contents after the abstract and keyword block, or regenerate the document with TOC reordering enabled.",
+    },
+    "en_abs_before_zh_abs": {
+        "category": "front_matter_order",
+        "severity": "medium",
+        "summary": "English abstract appears before Chinese abstract.",
+        "suggested_fix": "Place the Chinese abstract first, followed by Chinese keywords, English abstract, and English keywords.",
+    },
+    "kw_zh_before_abs": {
+        "category": "front_matter_order",
+        "severity": "medium",
+        "summary": "Chinese keywords appear before the Chinese abstract.",
+        "suggested_fix": "Move Chinese keywords directly after the Chinese abstract body.",
+    },
+    "kw_en_before_en_abs": {
+        "category": "front_matter_order",
+        "severity": "medium",
+        "summary": "English keywords appear before the English abstract.",
+        "suggested_fix": "Move English keywords directly after the English abstract body.",
+    },
+    "toc_after_body": {
+        "category": "front_matter_order",
+        "severity": "medium",
+        "summary": "Table of contents appears after body content.",
+        "suggested_fix": "Move the table of contents into the front matter before the first body chapter.",
+    },
+    "numpr_left": {
+        "category": "docx_numbering",
+        "severity": "medium",
+        "summary": "Word numbering metadata remains in paragraphs.",
+        "suggested_fix": "Clear list numbering from affected paragraphs and reapply deterministic paragraph styles.",
+    },
+    "marker_left": {
+        "category": "internal_cleanup",
+        "severity": "medium",
+        "summary": "Internal marker styles remain in the formatted document.",
+        "suggested_fix": "Run marker cleanup before returning the formatted DOCX.",
+    },
+    "heading_body_leak": {
+        "category": "style_leak",
+        "severity": "high",
+        "summary": "Long body-like paragraphs are styled as headings.",
+        "suggested_fix": "Convert long heading-styled paragraphs back to body style and keep heading styles for short section titles only.",
+    },
+    "toc_heading_leak": {
+        "category": "style_leak",
+        "severity": "medium",
+        "summary": "TOC entries are still styled as headings.",
+        "suggested_fix": "Apply normal TOC-entry formatting to TOC lines instead of Heading styles.",
+    },
+    "blank_page_risk": {
+        "category": "layout",
+        "severity": "medium",
+        "summary": "Forced page breaks may create sparse or blank pages.",
+        "suggested_fix": "Review page-break-before settings near front-matter and heading paragraphs.",
+    },
+    "content_loss_vs_baseline": {
+        "category": "content_preservation",
+        "severity": "high",
+        "summary": "Formatted output appears to contain less content than the baseline.",
+        "suggested_fix": "Compare the input and output documents before accepting the format run.",
+    },
+    "char_below_min": {
+        "category": "template_rules",
+        "severity": "medium",
+        "summary": "Document length is below the minimum required by the format guide.",
+        "suggested_fix": "Verify whether the format guide's minimum character count applies to this manuscript.",
+    },
+}
+
+
+def _unknown_diagnostic_severity(value: int | float) -> str:
+    if value >= 15:
+        return "high"
+    if value >= 8:
+        return "medium"
+    return "low"
+
+
+def build_diagnostics(
+    penalties: list[dict[str, Any]], features: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    diagnostics: list[dict[str, Any]] = []
+    features = features or {}
+    for penalty in penalties:
+        name = str(penalty.get("name", "unknown"))
+        value = penalty.get("value", 0)
+        catalog = DIAGNOSTIC_CATALOG.get(name, {})
+        diagnostics.append(
+            {
+                "name": name,
+                "category": catalog.get("category", "uncategorized"),
+                "severity": catalog.get("severity", _unknown_diagnostic_severity(float(value or 0))),
+                "penalty": value,
+                "summary": catalog.get("summary", f"Formatting check failed: {name}."),
+                "suggested_fix": catalog.get(
+                    "suggested_fix",
+                    "Review this check in the format guide and adjust the document or rule extractor.",
+                ),
+                "evidence": _diagnostic_evidence(name, features),
+            }
+        )
+    return diagnostics
+
+
+def _diagnostic_evidence(name: str, features: dict[str, Any]) -> dict[str, Any]:
+    keys_by_name = {
+        "abstract_after_body": ["idx_abs", "idx_intro"],
+        "toc_after_body": ["idx_toc", "idx_intro"],
+        "prefix_manual_toc_before_abs": [
+            "prefix_non_empty_before_abs",
+            "prefix_toc_like_before_abs",
+            "prefix_toc_like_ratio_before_abs",
+        ],
+        "numpr_left": ["numpr_left"],
+        "marker_left": ["marker_left"],
+        "heading_body_leak": ["heading_body_leak"],
+        "toc_heading_leak": ["toc_heading_leak"],
+        "blank_page_risk": ["blank_page_risk"],
+        "content_loss_vs_baseline": ["baseline_chars_no_space", "chars_ratio_vs_baseline"],
+        "char_below_min": ["chars_no_space", "min_chars"],
+    }
+    return {key: features.get(key) for key in keys_by_name.get(name, [])}
 
 
 def _count_chars(doc: Document) -> int:
@@ -269,43 +436,47 @@ def score_document(
             except Exception:
                 calibration = None
 
+    features = {
+        "chars_no_space": chars,
+        "idx_abs": idx_abs,
+        "idx_en_abs": idx_en_abs,
+        "idx_kw_zh": idx_kw_zh,
+        "idx_kw_en": idx_kw_en,
+        "idx_toc": idx_toc,
+        "idx_intro": idx_intro,
+        "enforce_required_sections": enforce_required_sections,
+        "baseline_has_zh_abs": baseline_presence["zh_abs"],
+        "baseline_has_zh_keywords": baseline_presence["zh_kw"],
+        "baseline_has_en_abs": baseline_presence["en_abs"],
+        "baseline_has_en_keywords": baseline_presence["en_kw"],
+        "baseline_has_toc": baseline_presence["toc"],
+        "required_zh_abs": req_zh_abs,
+        "required_zh_keywords": req_zh_kw,
+        "required_en_abs": req_en_abs,
+        "required_en_keywords": req_en_kw,
+        "required_toc": req_toc,
+        "baseline_chars_no_space": baseline_chars,
+        "chars_ratio_vs_baseline": (round(float(char_ratio), 4) if char_ratio is not None else None),
+        "numpr_left": numpr_left,
+        "marker_left": marker_left,
+        "heading_body_leak": heading_body_leak,
+        "toc_heading_leak": toc_heading_leak,
+        "blank_page_risk": blank_risk,
+        "prefix_non_empty_before_abs": prefix_toc["non_empty"],
+        "prefix_toc_like_before_abs": prefix_toc["toc_like"],
+        "prefix_long_body_like_before_abs": prefix_toc["long_body_like"],
+        "prefix_toc_like_ratio_before_abs": round(float(prefix_toc["toc_like_ratio"]), 3),
+        "prefix_manual_toc_before_abs": bool(prefix_toc["is_manual_toc"]),
+        "min_chars": min_chars,
+    }
+
     return {
         "score": round(calibrated_score, 1),
         "raw_quality_score": round(quality_score, 1),
         "chars_no_space": chars,
-        "features": {
-            "idx_abs": idx_abs,
-            "idx_en_abs": idx_en_abs,
-            "idx_kw_zh": idx_kw_zh,
-            "idx_kw_en": idx_kw_en,
-            "idx_toc": idx_toc,
-            "idx_intro": idx_intro,
-            "enforce_required_sections": enforce_required_sections,
-            "baseline_has_zh_abs": baseline_presence["zh_abs"],
-            "baseline_has_zh_keywords": baseline_presence["zh_kw"],
-            "baseline_has_en_abs": baseline_presence["en_abs"],
-            "baseline_has_en_keywords": baseline_presence["en_kw"],
-            "baseline_has_toc": baseline_presence["toc"],
-            "required_zh_abs": req_zh_abs,
-            "required_zh_keywords": req_zh_kw,
-            "required_en_abs": req_en_abs,
-            "required_en_keywords": req_en_kw,
-            "required_toc": req_toc,
-            "baseline_chars_no_space": baseline_chars,
-            "chars_ratio_vs_baseline": (round(float(char_ratio), 4) if char_ratio is not None else None),
-            "numpr_left": numpr_left,
-            "marker_left": marker_left,
-            "heading_body_leak": heading_body_leak,
-            "toc_heading_leak": toc_heading_leak,
-            "blank_page_risk": blank_risk,
-            "prefix_non_empty_before_abs": prefix_toc["non_empty"],
-            "prefix_toc_like_before_abs": prefix_toc["toc_like"],
-            "prefix_long_body_like_before_abs": prefix_toc["long_body_like"],
-            "prefix_toc_like_ratio_before_abs": round(float(prefix_toc["toc_like_ratio"]), 3),
-            "prefix_manual_toc_before_abs": bool(prefix_toc["is_manual_toc"]),
-            "min_chars": min_chars,
-        },
+        "features": features,
         "penalties": penalties,
+        "diagnostics": build_diagnostics(penalties, features),
         "calibration": calibration,
     }
 
@@ -317,10 +488,25 @@ def save_reports(report: dict[str, Any], out_json: str | Path, out_html: str | P
 
     rows = []
     for p in report.get("penalties", []):
-        rows.append(f"<tr><td>{p['name']}</td><td>-{p['value']}</td></tr>")
+        rows.append(
+            f"<tr><td>{escape(str(p['name']))}</td><td>-{escape(str(p['value']))}</td></tr>"
+        )
+    diagnostics = report.get("diagnostics")
+    if diagnostics is None:
+        diagnostics = build_diagnostics(report.get("penalties", []), report.get("features", {}))
+    diag_rows = []
+    for item in diagnostics:
+        diag_rows.append(
+            "<tr>"
+            f"<td>{escape(str(item.get('severity', '')))}</td>"
+            f"<td>{escape(str(item.get('name', '')))}</td>"
+            f"<td>{escape(str(item.get('summary', '')))}</td>"
+            f"<td>{escape(str(item.get('suggested_fix', '')))}</td>"
+            "</tr>"
+        )
     feat_rows = []
     for k, v in report.get("features", {}).items():
-        feat_rows.append(f"<tr><td>{k}</td><td>{v}</td></tr>")
+        feat_rows.append(f"<tr><td>{escape(str(k))}</td><td>{escape(str(v))}</td></tr>")
 
     # 检查是否有排版前后对比数据
     has_comparison = "score_before" in report and "score_after" in report
@@ -384,6 +570,9 @@ def save_reports(report: dict[str, Any], out_json: str | Path, out_html: str | P
         f"<p><b>原始质量分：</b>{report.get('raw_quality_score', report['score'])}</p>"
         "<h2>⚠️ 扣分项</h2><table><tr><th>项</th><th>扣分</th></tr>"
         + "".join(rows)
+        + "</table>"
+        + "<h2>Actionable diagnostics</h2><table><tr><th>Severity</th><th>Check</th><th>Problem</th><th>Suggested fix</th></tr>"
+        + "".join(diag_rows)
         + "</table>"
         + "<h2>📋 特征详情</h2><table><tr><th>项</th><th>值</th></tr>"
         + "".join(feat_rows)
