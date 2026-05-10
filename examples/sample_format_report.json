@@ -1,0 +1,46 @@
+{
+  "score_before": 72,
+  "score_after": 91,
+  "passed": false,
+  "content_changed": false,
+  "content_guard_enforced": true,
+  "content_fingerprint_before": "synthetic-before-fingerprint",
+  "content_fingerprint_after": "synthetic-before-fingerprint",
+  "summary": {
+    "fixed_items": 8,
+    "remaining_items": 3,
+    "highest_severity": "warning"
+  },
+  "diagnostics": [
+    {
+      "category": "required_sections",
+      "severity": "warning",
+      "penalty": 6,
+      "message": "English keywords section is missing.",
+      "suggested_fix": "Add an English keywords paragraph after the English abstract.",
+      "evidence": {
+        "section": "en_keywords"
+      }
+    },
+    {
+      "category": "caption",
+      "severity": "info",
+      "penalty": 2,
+      "message": "Two figure captions were not centered before repair.",
+      "suggested_fix": "Review figure captions after formatting and confirm numbering order.",
+      "evidence": {
+        "affected_count": 2
+      }
+    },
+    {
+      "category": "content_guard",
+      "severity": "pass",
+      "penalty": 0,
+      "message": "Content fingerprint is unchanged.",
+      "suggested_fix": "No action required.",
+      "evidence": {
+        "content_changed": false
+      }
+    }
+  ]
+}

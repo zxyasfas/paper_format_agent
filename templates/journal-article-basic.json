@@ -1,0 +1,78 @@
+{
+  "template_id": "journal-article-basic",
+  "display_name": "Journal Article Basic",
+  "locale": "en",
+  "scenario": "journal",
+  "description": "Synthetic baseline for journal article formatting checks and local submission preflight.",
+  "rules": {
+    "name": "Journal Article Basic Synthetic Rules",
+    "paper_size": "A4",
+    "margins_cm": {
+      "top": 2.5,
+      "bottom": 2.5,
+      "left": 2.5,
+      "right": 2.5
+    },
+    "body": {
+      "font": "Times New Roman",
+      "size_pt": 12,
+      "line_spacing": 1.5,
+      "first_line_indent_chars": 0,
+      "alignment": "justify"
+    },
+    "english": {
+      "font": "Times New Roman",
+      "size_pt": 12,
+      "line_spacing": 1.5
+    },
+    "heading_1": {
+      "font": "Times New Roman",
+      "size_pt": 14,
+      "bold": true,
+      "align": "center",
+      "page_break_before": false
+    },
+    "heading_2": {
+      "font": "Times New Roman",
+      "size_pt": 12,
+      "bold": true,
+      "align": "left"
+    },
+    "heading_3": {
+      "font": "Times New Roman",
+      "size_pt": 12,
+      "bold": false,
+      "align": "left"
+    },
+    "figure_caption": {
+      "font": "Times New Roman",
+      "size_pt": 10,
+      "bold": false,
+      "align": "center"
+    },
+    "table_caption": {
+      "font": "Times New Roman",
+      "size_pt": 10,
+      "bold": false,
+      "align": "center"
+    },
+    "header": {
+      "text": "",
+      "font": "Times New Roman",
+      "size_pt": 9
+    },
+    "footer": {
+      "page_number": true,
+      "font": "Times New Roman",
+      "size_pt": 9
+    },
+    "min_total_chars_no_space": 3000,
+    "required_sections": {
+      "zh_abstract": false,
+      "zh_keywords": false,
+      "en_abstract": true,
+      "en_keywords": true,
+      "toc": false
+    }
+  }
+}

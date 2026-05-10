@@ -20,6 +20,7 @@ python tools/compile_check.py
 ## Good First PRs
 
 - Add a synthetic test for a school, journal, or conference rule.
+- Add a synthetic template pack under `templates/` and keep it covered by `tests/test_templates.py`.
 - Improve one rule extractor, with before/after tests.
 - Add a report explanation for an existing scoring check.
 - Improve `SKILL.md` for agent workflows.

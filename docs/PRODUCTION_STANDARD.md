@@ -21,6 +21,7 @@
 - CI must run unit tests on every push/PR.
 - Regression runner must be executable in staging before release.
 - Batch runs must emit a machine-readable `batch_summary.json`.
+- Public template packs and examples must stay synthetic and reviewable.
 - Release audit must pass with no tracked local outputs, cache files, secrets, or private document artifacts.
 - Versioned release notes must record rule changes and score impact.
 
@@ -37,6 +38,9 @@ python tools/regression_runner.py \
 
 # Release hygiene
 python tools/release_audit.py
+
+# Local publish hygiene
+python tools/release_audit.py --include-local
 ```
 
 ## Current Scope

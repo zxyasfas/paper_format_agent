@@ -15,9 +15,13 @@ This roadmap is organized to create many small PR opportunities.
 
 - [x] Batch CLI for folders of papers.
 - [x] Release audit for tracked generated files, local scratch files, caches, and secret-like files.
+- [x] Privacy-safe template packs for Chinese thesis, journal article, and IEEE-style conference workflows.
+- [x] Synthetic examples for demo guides and report output shapes.
+- [x] GitHub Actions CI for skill validation, unit tests, compile checks, and release audit.
 
 ## Near Term
 
+- [ ] CLI flag to load a template pack directly, for example `--template chinese-thesis-basic`.
 - [ ] Stronger template extraction for section order and numbering systems.
 - [ ] More granular scoring explanations.
 - [ ] Table, figure, equation, footnote, header, and footer checks.
@@ -27,7 +31,7 @@ This roadmap is organized to create many small PR opportunities.
 ## Mid Term
 
 - [ ] Public synthetic benchmark corpus.
-- [ ] Template packs for schools, journals, and conferences.
+- [ ] Expanded template packs for more schools, journals, and conferences.
 - [ ] Rule plugin interface.
 - [ ] Render-and-compare PDF visual QA.
 - [ ] Better cross-platform post-processing with LibreOffice.

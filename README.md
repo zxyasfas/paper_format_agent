@@ -5,6 +5,7 @@
 ![Local-first](https://img.shields.io/badge/local--first-DOCX-blue)
 ![Content Guard](https://img.shields.io/badge/content--guard-enabled-green)
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB)
+![CI](https://github.com/zxyasfas/paper_format_agent/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 Local-first academic paper formatting for DOCX files, packaged as both a Python tool and an agent skill.
@@ -70,6 +71,16 @@ python -m paper_format_agent.cli \
 
 Batch mode writes one output folder per paper plus `batch_summary.json`, including pass rate, score averages, content-change count, and per-paper report locations.
 
+## Template Packs And Synthetic Examples
+
+The repository includes privacy-safe template packs and synthetic examples so users can try the workflow without uploading real papers:
+
+- [templates/](templates/) contains JSON presets for Chinese thesis, journal article, and IEEE-style conference formatting.
+- [examples/](examples/) contains a synthetic format guide and sample reports for demos, issues, and PRs.
+- [docs/TEMPLATE_PACKS.md](docs/TEMPLATE_PACKS.md) explains the template contract and contribution checklist.
+
+Template files are intentionally plain JSON. They are easy to review, easy to customize locally, and safe to extend through small PRs.
+
 ## Outputs
 
 | File | Purpose |
@@ -103,11 +114,20 @@ python tools/compile_check.py
 python tools/release_audit.py
 ```
 
+Before publishing from a local workspace, also run:
+
+```bash
+python tools/release_audit.py --include-local
+```
+
+This optional check includes untracked and ignored local artifacts, such as generated outputs, scratch files, caches, and private document formats.
+
 ## Good First PRs
 
 We want many small, reviewable PRs. Good contribution areas:
 
 - Add a synthetic test for a school, journal, or conference formatting rule.
+- Add a new synthetic template pack in `templates/`.
 - Improve a narrowly scoped rule extractor.
 - Add scoring coverage for tables, figures, references, equations, headers, or footers.
 - Improve report wording or diagnostics.
