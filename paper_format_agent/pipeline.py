@@ -107,7 +107,7 @@ def is_chapter(text: str) -> bool:
 
 def is_section(text: str) -> bool:
     s = (text or "").strip()
-    return bool(re.match(r"^\d+\.\d+(?!\.)\s*", s))
+    return bool(re.match(r"^(?:\d+\.\d+(?!\.)|[A-Z]\.)(?:\s+|$)", s))
 
 
 def is_subsection(text: str) -> bool:
@@ -156,7 +156,7 @@ def is_table_caption(text: str) -> bool:
         return False
     return bool(
         re.match(
-            r"^(\u8868|Table)\s*[0-9\u4e00-\u9fff.\-\uFF0D\u2014]+(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
+            r"^(\u8868|Table)\s*(?:[0-9\u4e00-\u9fff.\-\uFF0D\u2014]+|[IVXLC]+)(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
             t,
             flags=re.IGNORECASE,
         )

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import unittest
 
+from docx import Document
+
+from paper_format_agent.pipeline import T_FIG_CAPTION, T_H1, T_H2, T_TABLE_CAPTION, classify_document
 from paper_format_agent.rules import extract_rules_from_text
 
 
@@ -25,7 +28,19 @@ class RulesExtractionTests(unittest.TestCase):
         self.assertEqual(rules["min_total_chars_no_space"], 10000)
         self.assertEqual(rules["heading_1"]["align"], "center")
 
+    def test_ieee_style_headings_and_captions_are_classified(self):
+        doc = Document()
+        doc.add_paragraph("I. INTRODUCTION")
+        doc.add_paragraph("A. Preparation of Papers")
+        doc.add_paragraph("Fig. 1. System overview")
+        doc.add_paragraph("Table I. Experimental settings")
+
+        cls = classify_document(doc)
+        self.assertEqual(cls.types[0], T_H1)
+        self.assertEqual(cls.types[1], T_H2)
+        self.assertEqual(cls.types[2], T_FIG_CAPTION)
+        self.assertEqual(cls.types[3], T_TABLE_CAPTION)
+
 
 if __name__ == "__main__":
     unittest.main()
-
