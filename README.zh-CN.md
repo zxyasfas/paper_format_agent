@@ -176,6 +176,9 @@ python tools/release_audit.py
 - 改进 `format_report.html` 的可读性。
 - 增加 GitHub Actions、MCP、本地批处理等集成能力。
 
+如果你是第一次贡献，可以直接从 [贡献任务清单](docs/CONTRIBUTOR_TASKS.md)
+开始。里面把用户痛点、预期 PR 形态、验收标准和建议标签拆成了可执行的小任务。
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
