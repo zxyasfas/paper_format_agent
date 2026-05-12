@@ -1,9 +1,9 @@
 {
   "cases": [
     {
-      "name": "njart_case",
-      "format_file": "F:/xwechat_files/wxid_ln8gpq349yeq22_1bcd/msg/file/2026-04/南京艺术学院论文写作格式与规范(2).doc",
-      "paper_file": "F:/xwechat_files/wxid_ln8gpq349yeq22_1bcd/msg/file/2026-04/定稿-雷鬼音乐中架子鼓的录音技术研究与创作实践——以原创作品《藏着》为例.docx",
+      "name": "synthetic_thesis_case",
+      "format_file": "examples/fixtures/synthetic_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_paper.docx",
       "engine": "python",
       "strict_required_sections": false,
       "require_content_unchanged": true,
@@ -13,4 +13,3 @@
     }
   ]
 }
-
