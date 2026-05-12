@@ -134,6 +134,10 @@ We want many small, reviewable PRs. Good contribution areas:
 - Add local-first integrations such as MCP, GitHub Actions, or batch processing.
 - Improve this repo's `SKILL.md` workflow for agent users.
 
+New contributors can start from the task-ready board in
+[docs/CONTRIBUTOR_TASKS.md](docs/CONTRIBUTOR_TASKS.md). Each task lists user
+pain, expected PR shape, and suggested labels.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md), [ROADMAP.md](ROADMAP.md), and [AGENTS.md](AGENTS.md).
 
 ## Architecture

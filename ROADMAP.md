@@ -11,6 +11,21 @@ This roadmap is organized to create many small PR opportunities.
 - [ ] Add examples to `docs/regression_manifest.sample.json`.
 - [ ] Improve `SKILL.md` with more precise agent review steps.
 
+See [docs/CONTRIBUTOR_TASKS.md](docs/CONTRIBUTOR_TASKS.md) for task-ready issue
+descriptions, acceptance criteria, and suggested labels.
+
+## Contributor Starter Board
+
+These are intentionally small and useful PRs:
+
+- [ ] `tests`: APA reference spacing synthetic coverage.
+- [ ] `tests`: Chinese thesis abstract and keyword label variants.
+- [ ] `scoring`: figure caption diagnostics with actionable fixes.
+- [ ] `scoring`: table caption diagnostics with evidence fields.
+- [ ] `templates`: synthetic university thesis template pack.
+- [ ] `reporting`: clearer failed-check wording in HTML reports.
+- [ ] `ci`: optional GitHub Actions example for local format checks.
+
 ## Recently Added
 
 - [x] Batch CLI for folders of papers.
@@ -49,3 +64,4 @@ This roadmap is organized to create many small PR opportunities.
 - Make every template rule request easy to turn into a PR.
 - Publish reproducible demos using synthetic documents.
 - Prefer many small contributor-friendly issues over large opaque milestones.
+- Keep public issues specific enough that a contributor can finish one in one evening.
