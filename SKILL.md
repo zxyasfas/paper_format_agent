@@ -38,10 +38,46 @@ python -m paper_format_agent.cli \
    - `format_report.html`: human-readable report.
    - `modify_log.json`: formatting operations.
    - `engine_report.json`: post-processing engine result.
-4. Check the content guard fields in `format_report.json`:
-   - `content_changed` should normally be `false`.
-   - `content_guard_enforced` should normally be `true`.
-5. If a rule is wrong, update rule extraction or scoring logic and add a minimal test case.
+
+## Reviewing Format Reports
+
+### Reading `format_report.json`
+
+Open `format_report.json` first after every run. The key fields to examine:
+
+- **`score`** (0–100): overall formatting compliance. Lower scores mean more issues to investigate.
+- **`checks`**: array of per-check results. Each check has:
+  - `check`: check name (e.g. `margins`, `line_spacing`, `required_sections`).
+  - `status`: `pass` or `fail`. A single `fail` lowers the score.
+  - `details`: human-readable explanation of what was found versus what was expected.
+  - `expected` / `actual`: values for the checked property, when applicable.
+- **`content_guard`**: object with two boolean fields:
+  - `content_changed`: `true` only if the tool modified actual academic text (not just formatting).
+  - `content_guard_enforced`: `true` when the guard was active during the run.
+- **`engine`**: which engine ran (e.g. `auto`, `python-docx`).
+- **`errors`**: array of runtime errors. Any entries here need investigation before delivering results.
+
+**Review workflow:** Scan checks with `status: "fail"` first. Read their `details` to understand what did not match. Cross-reference with the priority list below to decide what to fix.
+
+### Handling Content Guard Failures
+
+If `content_guard.content_changed` is `true`:
+
+1. **Stop and confirm with the user.** A content guard failure means the tool may have altered paper text, equations, or reference text. Do not deliver the repaired document until this is resolved.
+2. **Check `modify_log.json`** for the specific operations that triggered the change. The `modify_log.json` contains a timestamped list of every modification, including a `type` field and a `reason` field.
+3. **Compare the original and repaired documents** side by side if the user provides both. Look for changed words, removed content, or relocated sections.
+4. **If the change was intentional and safe** (e.g. the user explicitly asked for content replacement), confirm with the user and note the exception in your summary.
+5. **If the change was unintentional**, revert by rerunning with `--preserve-content` (if supported) or by applying only formatting operations manually. Report the false positive as a GitHub issue with the smallest reproducing input.
+
+### Review Priority
+
+When reviewing output, prioritize issues in this order:
+
+1. Content changed unexpectedly (see content guard handling above).
+2. Required sections or headings were misclassified.
+3. Page setup, margins, fonts, or line spacing are wrong.
+5. Captions, references, tables, or numbering look wrong.
+6. Report wording or score explanation is unclear.
 
 ## Validation
 
@@ -54,22 +90,21 @@ python tools/compile_check.py
 python tools/release_audit.py
 ```
 
+### What Each Validation Step Checks
+
+- **`tools/validate_skill.py`**: Verifies that `SKILL.md` front matter, section structure, and required code blocks follow the expected format for agent consumption. Fix any warnings this script reports before proceeding.
+- **`python -m unittest discover -s tests`**: Runs the project test suite. All tests should pass. If any fail, read the test name and error message to determine whether the failure is in your change or in a pre-existing test.
+- **`tools/compile_check.py`**: Ensures the Python package can be imported and all modules compile without errors. A failed import or syntax error here blocks delivery.
+- **`tools/release_audit.py`**: Audits the repository for release-readiness: version consistency, changelog entries, and required metadata files. Non-fatal warnings should be noted; errors should be fixed.
+
+If any validation step fails, investigate the output before proceeding. Do not deliver results while validation is red.
+
 ## When Adding Template Support
 
 - Add the smallest representative rule text needed to reproduce the behavior.
 - Prefer deterministic rule extraction over LLM-only interpretation.
 - Add tests for extracted margins, font size, line spacing, required sections, headings, captions, or references.
 - Do not commit real student documents. Use synthetic text or anonymized fixtures.
-
-## When Reviewing Output
-
-Read `format_report.json` first, then inspect `format_report.html` if the user needs a human-readable summary. Prioritize issues in this order:
-
-1. Content changed unexpectedly.
-2. Required sections or headings were misclassified.
-3. Page setup, margins, fonts, or line spacing are wrong.
-4. Captions, references, tables, or numbering look wrong.
-5. Report wording or score explanation is unclear.
 
 ## Contribution-Friendly Tasks
 
