@@ -205,19 +205,3 @@ def extract_rules_from_text(text: str | None = None) -> dict:
         rules["min_total_chars_no_space"] = min_chars
 
     return rules
-
-
-# ---------------------------------------------------------------------------
-#  Abstract / keyword label matching helpers for pipeline section recognition
-# ---------------------------------------------------------------------------
-
-def is_zh_abstract_label(text: str) -> bool:
-    """Return True if *text* matches a common Chinese abstract label variant."""
-    pattern = re.compile(r"^\s*[\uff08\u3010]?\s*\u6458\s*\u8981\s*[\uff09\u3011]?\s*[\uff1a\u003a]?\s*$")
-    return bool(pattern.match(text))
-
-
-def is_zh_keyword_label(text: str) -> bool:
-    """Return True if *text* matches a common Chinese keyword label variant."""
-    pattern = re.compile(r"^\s*[\uff08\u3010]?\s*\u5173\s*\u952e\s*(\u8bcd|\u5b57)\s*[\uff09\u3011]?\s*[\uff1a\u003a]?\s*$")
-    return bool(pattern.match(text))
