@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from paper_format_agent.pipeline import run_pipeline
 from paper_format_agent.rules import extract_rules_from_text
@@ -56,6 +57,40 @@ class PipelineContentGuardTests(unittest.TestCase):
             self.assertEqual(result.logs[0]["action"], "setup_document_base")
             self.assertEqual(result.logs[0]["headers_written"], 1)
             self.assertEqual(result.logs[0]["footers_written"], 1)
+
+    def test_pipeline_keeps_reference_spacing_and_indent_stable(self):
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            src = td_path / "input.docx"
+            out = td_path / "out.docx"
+
+            doc = Document()
+            doc.add_paragraph("References")
+            doc.add_paragraph(
+                "Smith, J. Q. (2024). Synthetic testing for reference layouts. "
+                "Journal of Fake Results, 12(3), 45-67."
+            )
+            doc.add_paragraph(
+                "Lopez, M., & Chen, A. (2023). Paragraph spacing in mock APA samples. "
+                "Example Review, 8(1), 10-18."
+            )
+            doc.save(src)
+
+            rules = extract_rules_from_text("正文宋体小四，1.25倍行距。")
+            result = run_pipeline(src, out, rules, enforce_content_guard=True)
+
+            formatted = Document(str(out))
+            self.assertEqual(formatted.paragraphs[0].text, "References")
+
+            for reference_paragraph in formatted.paragraphs[1:]:
+                self.assertEqual(reference_paragraph.style.name, "Normal")
+                self.assertEqual(reference_paragraph.paragraph_format.alignment, WD_ALIGN_PARAGRAPH.LEFT)
+                self.assertEqual(reference_paragraph.paragraph_format.line_spacing, 1.25)
+                self.assertEqual(reference_paragraph.paragraph_format.first_line_indent.pt, 0.0)
+                self.assertEqual(reference_paragraph.paragraph_format.space_before.pt, 0.0)
+                self.assertEqual(reference_paragraph.paragraph_format.space_after.pt, 0.0)
+
+            self.assertFalse(result.content_changed)
 
 
 if __name__ == "__main__":
