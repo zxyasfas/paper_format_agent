@@ -83,6 +83,11 @@ class KeywordZhVariantsTests(unittest.TestCase):
         self.assertFalse(is_keyword_zh("摘要"))  # 摘要
         self.assertFalse(is_keyword_zh(""))
 
+    def test_body_text_starting_with_label_not_keyword(self):
+        # No colon and more text follows the label: this is body text, not a label line.
+        self.assertFalse(is_keyword_zh("关键词测试方法"))
+        self.assertFalse(is_keyword_zh("关键字段说明"))
+
 
 class EnglishLabelTests(unittest.TestCase):
     """Smoke tests for English label detection."""

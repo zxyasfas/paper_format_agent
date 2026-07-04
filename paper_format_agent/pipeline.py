@@ -62,7 +62,7 @@ def is_keyword_zh(text: str) -> bool:
     t = normalize_text(text)
     t = re.sub(r"^[（）\[\]【】（）：:\s]+|[（）\[\]【】（）：:\s]+$", "", t)
     t = re.sub(r"^中文", "", t)  # strip 中文 prefix
-    return bool(re.match(r"^(关键词|关键字)\s*[:：]?", t))
+    return bool(re.match(r"^(关键词|关键字)(?:[:：]|$)", t))
 
 
 def is_keyword_en(text: str) -> bool:
