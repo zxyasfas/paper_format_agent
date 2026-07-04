@@ -5,6 +5,7 @@
 ![本地优先](https://img.shields.io/badge/本地优先-DOCX-blue)
 ![内容保护](https://img.shields.io/badge/内容保护-默认开启-green)
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB)
+![CI](https://github.com/zxyasfas/paper_format_agent/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 Paper Format Agent 是一个本地优先的论文格式修改工具，面向毕业论文、课程论文、期刊投稿和会议论文的 DOCX 格式整理场景。它会从格式说明中抽取规则，自动修复论文排版，并生成机器可读与人工可读的检查报告。
@@ -93,6 +94,16 @@ batch_summary.json
 - 内容是否被意外改变。
 - 每篇论文的输出目录和报告路径。
 
+## 模板包与合成示例
+
+项目内置了可公开发布的模板包和合成示例，方便用户在不上传真实论文的情况下试用完整流程：
+
+- [templates/](templates/)：包含中文学位论文、期刊论文、IEEE 风格会议论文等 JSON 模板预设。
+- [examples/](examples/)：包含合成格式说明、机器可读报告示例和人工可读报告示例。
+- [模板包说明](docs/TEMPLATE_PACKS.md)：说明模板字段约定、贡献流程和后续扩展方向。
+
+模板使用纯 JSON 保存，便于审查、复制、本地定制，也适合通过小 PR 持续扩展学校、期刊和会议格式覆盖。
+
 ## 输出文件
 
 | 文件 | 用途 |
@@ -159,10 +170,14 @@ python tools/release_audit.py
 适合贡献的小任务：
 
 - 添加某个学校、期刊或会议模板的合成测试。
+- 在 `templates/` 中新增一个可公开审查的合成模板包。
 - 改进规则抽取逻辑。
 - 增加表格、图题、表题、公式、脚注、参考文献的评分覆盖。
 - 改进 `format_report.html` 的可读性。
 - 增加 GitHub Actions、MCP、本地批处理等集成能力。
+
+如果你是第一次贡献，可以直接从 [贡献任务清单](docs/CONTRIBUTOR_TASKS.md)
+开始。里面把用户痛点、预期 PR 形态、验收标准和建议标签拆成了可执行的小任务。
 
 ## License
 

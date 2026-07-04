@@ -44,8 +44,11 @@ def normalize_text(text: str) -> str:
 
 
 def is_abstract_title(text: str) -> bool:
+    # Strip whitespace, punctuation wrappers, and optional "\u4e2d\u6587" prefix.
     t = normalize_text(text)
-    return t == "\u6458\u8981"
+    t = re.sub(r"^[\uff08\uff09\[\]\u3010\u3011\uff08\uff09\uff1a:\s]+|[\uff08\uff09\[\]\u3010\u3011\uff08\uff09\uff1a:\s]+$", "", t)
+    t = re.sub(r"^\u4e2d\u6587", "", t)  # strip \u4e2d\u6587 prefix
+    return t == "\u6458\u8981"  # \u6458\u8981
 
 
 def is_english_abstract_title(text: str) -> bool:
@@ -53,8 +56,13 @@ def is_english_abstract_title(text: str) -> bool:
 
 
 def is_keyword_zh(text: str) -> bool:
-    # Chinese keywords line: "关键词/关键字:"
-    return bool(re.match(r"^(\u5173\u952e\u8bcd|\u5173\u952e\u5b57)\s*[:\uff1a]", (text or "").strip()))
+    # Chinese keywords line. Strip whitespace and punctuation wrappers, then
+    # match the common "关键词" / "关键字" label with an optional "中文" prefix
+    # and optional trailing colon.
+    t = normalize_text(text)
+    t = re.sub(r"^[（）\[\]【】（）：:\s]+|[（）\[\]【】（）：:\s]+$", "", t)
+    t = re.sub(r"^中文", "", t)  # strip 中文 prefix
+    return bool(re.match(r"^(关键词|关键字)(?:[:：]|$)", t))
 
 
 def is_keyword_en(text: str) -> bool:
@@ -107,7 +115,7 @@ def is_chapter(text: str) -> bool:
 
 def is_section(text: str) -> bool:
     s = (text or "").strip()
-    return bool(re.match(r"^(?:\d+\.\d+(?!\.)|[A-Z]\.)(?:\s+|$)", s))
+    return bool(re.match(r"^(?:\d+\.\d+(?!\.)\s*|[A-Z]\.(?:\s+|$))", s))
 
 
 def is_subsection(text: str) -> bool:
@@ -156,7 +164,7 @@ def is_table_caption(text: str) -> bool:
         return False
     return bool(
         re.match(
-            r"^(\u8868|Table)\s*(?:[0-9\u4e00-\u9fff.\-\uFF0D\u2014]+|[IVXLC]+)(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
+            r"^(\u8868|Table)\s*[0-9\u4e00-\u9fffIVXLCDM.\-\uFF0D\u2014]+(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
             t,
             flags=re.IGNORECASE,
         )

@@ -3,3 +3,6 @@ contact_links:
   - name: Contribution guide
     url: https://github.com/zxyasfas/paper_format_agent/blob/main/CONTRIBUTING.md
     about: Read this before opening a PR.
+  - name: Contributor task board
+    url: https://github.com/zxyasfas/paper_format_agent/blob/main/docs/CONTRIBUTOR_TASKS.md
+    about: Pick a small, reviewable task with clear acceptance criteria.

@@ -1,0 +1,82 @@
+{
+  "template_id": "ieee-conference-basic",
+  "display_name": "IEEE Conference Basic",
+  "locale": "en",
+  "scenario": "conference",
+  "description": "Synthetic IEEE-style baseline for future conference-paper layout checks. Two-column layout is listed as a roadmap item, not fully enforced yet.",
+  "rules": {
+    "name": "IEEE Conference Basic Synthetic Rules",
+    "paper_size": "A4",
+    "layout": {
+      "columns": 2,
+      "column_gap_cm": 0.5
+    },
+    "margins_cm": {
+      "top": 1.9,
+      "bottom": 2.5,
+      "left": 1.6,
+      "right": 1.6
+    },
+    "body": {
+      "font": "Times New Roman",
+      "size_pt": 10,
+      "line_spacing": 1.0,
+      "first_line_indent_chars": 0,
+      "alignment": "justify"
+    },
+    "english": {
+      "font": "Times New Roman",
+      "size_pt": 10,
+      "line_spacing": 1.0
+    },
+    "heading_1": {
+      "font": "Times New Roman",
+      "size_pt": 10,
+      "bold": true,
+      "align": "center",
+      "page_break_before": false
+    },
+    "heading_2": {
+      "font": "Times New Roman",
+      "size_pt": 10,
+      "bold": true,
+      "align": "left"
+    },
+    "heading_3": {
+      "font": "Times New Roman",
+      "size_pt": 10,
+      "bold": false,
+      "align": "left"
+    },
+    "figure_caption": {
+      "font": "Times New Roman",
+      "size_pt": 8,
+      "bold": false,
+      "align": "center"
+    },
+    "table_caption": {
+      "font": "Times New Roman",
+      "size_pt": 8,
+      "bold": false,
+      "align": "center"
+    },
+    "header": {
+      "text": "",
+      "font": "Times New Roman",
+      "size_pt": 8
+    },
+    "footer": {
+      "page_number": false,
+      "font": "Times New Roman",
+      "size_pt": 8
+    },
+    "min_total_chars_no_space": 2000,
+    "required_sections": {
+      "zh_abstract": false,
+      "zh_keywords": false,
+      "en_abstract": true,
+      "en_keywords": true,
+      "toc": false
+    }
+  }
+}

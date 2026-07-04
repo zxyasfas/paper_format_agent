@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import Mock, patch
 
 from paper_format_agent.release_audit import audit_release_paths
+from tools import release_audit as release_audit_tool
 
 
 class ReleaseAuditTests(unittest.TestCase):
@@ -33,6 +35,28 @@ class ReleaseAuditTests(unittest.TestCase):
         )
 
         self.assertEqual(findings, [])
+
+    def test_local_paths_merges_untracked_and_ignored_paths(self):
+        outputs = [
+            "notes/private_template.docx\n",
+            "sample_output/run/format_report.json\nnotes/private_template.docx\n",
+        ]
+
+        def fake_run(*args, **kwargs):
+            result = Mock()
+            result.stdout = outputs.pop(0)
+            return result
+
+        with patch.object(release_audit_tool.subprocess, "run", side_effect=fake_run):
+            paths = release_audit_tool.local_paths()
+
+        self.assertEqual(
+            paths,
+            [
+                "notes/private_template.docx",
+                "sample_output/run/format_report.json",
+            ],
+        )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,78 @@
+{
+  "template_id": "chinese-thesis-basic",
+  "display_name": "Chinese Thesis Basic",
+  "locale": "zh-CN",
+  "scenario": "thesis",
+  "description": "Synthetic baseline for Chinese thesis formatting checks. No real university template is included.",
+  "rules": {
+    "name": "Chinese Thesis Basic Synthetic Rules",
+    "paper_size": "A4",
+    "margins_cm": {
+      "top": 2.54,
+      "bottom": 2.54,
+      "left": 3.17,
+      "right": 2.54
+    },
+    "body": {
+      "font": "宋体",
+      "size_pt": 12,
+      "line_spacing": 1.25,
+      "first_line_indent_chars": 2,
+      "alignment": "justify"
+    },
+    "english": {
+      "font": "Times New Roman",
+      "size_pt": 12,
+      "line_spacing": 1.25
+    },
+    "heading_1": {
+      "font": "黑体",
+      "size_pt": 16,
+      "bold": true,
+      "align": "center",
+      "page_break_before": false
+    },
+    "heading_2": {
+      "font": "黑体",
+      "size_pt": 14,
+      "bold": true,
+      "align": "left"
+    },
+    "heading_3": {
+      "font": "黑体",
+      "size_pt": 12,
+      "bold": true,
+      "align": "left"
+    },
+    "figure_caption": {
+      "font": "宋体",
+      "size_pt": 10.5,
+      "bold": false,
+      "align": "center"
+    },
+    "table_caption": {
+      "font": "宋体",
+      "size_pt": 10.5,
+      "bold": false,
+      "align": "center"
+    },
+    "header": {
+      "text": "本科毕业论文",
+      "font": "宋体",
+      "size_pt": 9
+    },
+    "footer": {
+      "page_number": true,
+      "font": "宋体",
+      "size_pt": 9
+    },
+    "min_total_chars_no_space": 10000,
+    "required_sections": {
+      "zh_abstract": true,
+      "zh_keywords": true,
+      "en_abstract": true,
+      "en_keywords": true,
+      "toc": true
+    }
+  }
+}

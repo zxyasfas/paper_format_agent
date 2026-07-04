@@ -11,13 +11,32 @@ This roadmap is organized to create many small PR opportunities.
 - [ ] Add examples to `docs/regression_manifest.sample.json`.
 - [ ] Improve `SKILL.md` with more precise agent review steps.
 
+See [docs/CONTRIBUTOR_TASKS.md](docs/CONTRIBUTOR_TASKS.md) for task-ready issue
+descriptions, acceptance criteria, and suggested labels.
+
+## Contributor Starter Board
+
+These are intentionally small and useful PRs:
+
+- [ ] `tests`: APA reference spacing synthetic coverage.
+- [ ] `tests`: Chinese thesis abstract and keyword label variants.
+- [ ] `scoring`: figure caption diagnostics with actionable fixes.
+- [ ] `scoring`: table caption diagnostics with evidence fields.
+- [ ] `templates`: synthetic university thesis template pack.
+- [ ] `reporting`: clearer failed-check wording in HTML reports.
+- [ ] `ci`: optional GitHub Actions example for local format checks.
+
 ## Recently Added
 
 - [x] Batch CLI for folders of papers.
 - [x] Release audit for tracked generated files, local scratch files, caches, and secret-like files.
+- [x] Privacy-safe template packs for Chinese thesis, journal article, and IEEE-style conference workflows.
+- [x] Synthetic examples for demo guides and report output shapes.
+- [x] GitHub Actions CI for skill validation, unit tests, compile checks, and release audit.
 
 ## Near Term
 
+- [ ] CLI flag to load a template pack directly, for example `--template chinese-thesis-basic`.
 - [ ] Stronger template extraction for section order and numbering systems.
 - [ ] More granular scoring explanations.
 - [ ] Table, figure, equation, footnote, header, and footer checks.
@@ -27,7 +46,7 @@ This roadmap is organized to create many small PR opportunities.
 ## Mid Term
 
 - [ ] Public synthetic benchmark corpus.
-- [ ] Template packs for schools, journals, and conferences.
+- [ ] Expanded template packs for more schools, journals, and conferences.
 - [ ] Rule plugin interface.
 - [ ] Render-and-compare PDF visual QA.
 - [ ] Better cross-platform post-processing with LibreOffice.
@@ -45,3 +64,4 @@ This roadmap is organized to create many small PR opportunities.
 - Make every template rule request easy to turn into a PR.
 - Publish reproducible demos using synthetic documents.
 - Prefer many small contributor-friendly issues over large opaque milestones.
+- Keep public issues specific enough that a contributor can finish one in one evening.
