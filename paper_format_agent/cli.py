@@ -2,87 +2,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
-import tempfile
 from pathlib import Path
-
-from docx import Document
 
 from .batch import discover_paper_files, make_case_output_dir, summarize_batch
 from .calibration import calibrate_from_labels
-from .engines import run_postprocess_engine
-from .llm import LLMConfig, generate_suggestions
-from .pipeline import run_pipeline
 from .rules import extract_rules_from_text
-from .scorer import save_reports, score_document
+from .service import format_paper, read_docx_text, read_format_text
 
-
-def read_docx_text(path: Path) -> str:
-    doc = Document(path)
-    out = [p.text for p in doc.paragraphs if p.text]
-    for t in doc.tables:
-        for r in t.rows:
-            for c in r.cells:
-                if c.text:
-                    out.append(c.text)
-    return "\n".join(out)
-
-
-def read_format_text(path: str | Path) -> str:
-    path = Path(path)
-    if path.suffix.lower() == ".docx":
-        return read_docx_text(path)
-    if path.suffix.lower() == ".txt":
-        return path.read_text(encoding="utf-8", errors="ignore")
-
-    converted_adjacent = path.with_name(path.stem + "_converted.docx")
-    if converted_adjacent.exists():
-        return read_docx_text(converted_adjacent)
-
-    with tempfile.TemporaryDirectory() as td:
-        out_dir = Path(td)
-        try:
-            subprocess.run(
-                ["libreoffice", "--headless", "--convert-to", "docx", "--outdir", str(out_dir), str(path)],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=90,
-            )
-            converted = out_dir / f"{path.stem}.docx"
-            if converted.exists():
-                return read_docx_text(converted)
-        except Exception:
-            pass
-
-        # Fallback: Word COM conversion on Windows.
-        try:
-            converted = out_dir / f"{path.stem}.docx"
-            ps = rf"""
-$ErrorActionPreference = "Stop"
-$src = "{str(path.resolve())}"
-$dst = "{str(converted.resolve())}"
-$word = New-Object -ComObject Word.Application
-$word.Visible = $false
-$word.DisplayAlerts = 0
-$doc = $word.Documents.Open($src, $false, $true)
-$doc.SaveAs([ref]$dst, [ref]16)
-$doc.Close()
-$word.Quit()
-"""
-            subprocess.run(
-                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=120,
-            )
-            if converted.exists():
-                return read_docx_text(converted)
-        except Exception:
-            pass
-    return ""
+# read_docx_text / read_format_text are re-exported for backward compatibility
+# (gui.py imports read_format_text from here).
+__all__ = ["read_docx_text", "read_format_text", "build_parser", "run_format_job", "run_batch", "main"]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -120,83 +49,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_format_job(args: argparse.Namespace, format_text: str, rules: dict, paper_file: str | Path, out_dir: Path) -> dict:
-    out_dir.mkdir(parents=True, exist_ok=True)
-    paper_file = Path(paper_file)
-    (out_dir / "format_rules.json").write_text(json.dumps(rules, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    llm_cfg = LLMConfig(
-        enabled=bool(args.use_llm),
-        api_key=args.llm_api_key or os.getenv("DEEPSEEK_API_KEY"),
-        base_url=args.llm_base_url,
-        model=args.llm_model,
-        timeout_seconds=args.llm_timeout,
-    )
-    llm_report = generate_suggestions(paper_file, format_text, llm_cfg)
-    (out_dir / "llm_suggestions.json").write_text(json.dumps(llm_report, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    marker_dump = out_dir / "marker_dump.json" if args.marker_dump else None
-    output_docx = out_dir / "formatted_paper_v3.docx"
-    run_result = run_pipeline(
+    return format_paper(
         paper_file,
-        output_docx,
-        rules,
-        write_marker_dump=marker_dump,
-        enforce_content_guard=not bool(args.allow_content_change),
-    )
-    (out_dir / "modify_log.json").write_text(json.dumps(run_result.logs, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    engine_report = run_postprocess_engine(args.engine, output_docx)
-    (out_dir / "engine_report.json").write_text(json.dumps(engine_report, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    report_before = score_document(
-        paper_file,
-        rules,
+        out_dir,
+        format_text=format_text,
+        rules=rules,
+        engine=args.engine,
+        strict_required_sections=bool(args.strict_required_sections),
+        allow_content_change=bool(args.allow_content_change),
+        marker_dump=bool(args.marker_dump),
         calibration_file=args.calibration_file,
-        baseline_docx=paper_file,
-        enforce_required_sections=bool(args.strict_required_sections),
+        use_llm=bool(args.use_llm),
+        llm_api_key=args.llm_api_key,
+        llm_base_url=args.llm_base_url,
+        llm_model=args.llm_model,
+        llm_timeout=args.llm_timeout,
     )
-    report_after = score_document(
-        output_docx,
-        rules,
-        calibration_file=args.calibration_file,
-        baseline_docx=paper_file,
-        enforce_required_sections=bool(args.strict_required_sections),
-    )
-
-    report = report_after.copy()
-    report["score_before"] = round(report_before["score"], 1)
-    report["score_after"] = round(report_after["score"], 1)
-    report["score_improvement"] = round(report_after["score"] - report_before["score"], 1)
-    report["chars_no_space_before"] = report_before["chars_no_space"]
-    report["chars_no_space_after"] = report_after["chars_no_space"]
-    report["llm_used"] = bool(llm_report.get("used"))
-    report["llm_warnings"] = llm_report.get("warnings", [])
-    report["engine_report"] = engine_report
-    report["removed_numpr_count"] = run_result.removed_numpr_count
-    report["classification_confidence"] = run_result.classification_confidence
-    report["content_fingerprint_before"] = run_result.content_fingerprint_before
-    report["content_fingerprint_after"] = run_result.content_fingerprint_after
-    report["content_changed"] = bool(run_result.content_changed)
-    report["content_guard_enforced"] = not bool(args.allow_content_change)
-    save_reports(report, out_dir / "format_report.json", out_dir / "format_report.html")
-
-    return {
-        "paper_file": str(paper_file),
-        "out_dir": str(out_dir),
-        "output": str(output_docx),
-        "score_before": report["score_before"],
-        "score_after": report["score_after"],
-        "score_improvement": report["score_improvement"],
-        "raw_quality_score": report.get("raw_quality_score"),
-        "chars_no_space_before": report["chars_no_space_before"],
-        "chars_no_space_after": report["chars_no_space_after"],
-        "removed_numpr_count": run_result.removed_numpr_count,
-        "content_changed": bool(run_result.content_changed),
-        "content_guard_enforced": not bool(args.allow_content_change),
-        "engine": engine_report.get("engine", args.engine),
-        "engine_success": bool(engine_report.get("success")),
-        "llm_used": bool(llm_report.get("used")),
-    }
 
 
 def run_batch(args: argparse.Namespace, format_text: str, rules: dict, out_dir: Path) -> int:
