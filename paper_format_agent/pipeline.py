@@ -115,7 +115,49 @@ def is_chapter(text: str) -> bool:
 
 def is_section(text: str) -> bool:
     s = (text or "").strip()
-    return bool(re.match(r"^(?:\d+\.\d+(?!\.)\s*|[A-Z]\.(?:\s+|$))", s))
+
+    # IEEE letter-style subsection headings: "A. Title" or bare "B.".
+    if re.match(r"^[A-Z]\.(?:\s+|$)", s):
+        return True
+
+    # Numeric section marker: 1-2 digit integer segments only, and not followed by
+    # a further digit/dot. Rejects 4-digit years (2024.6), longer decimals (3.14159),
+    # and deeper numbering (1.1.1) from being read as an H2 heading.
+    m = re.match(r"^[1-9]\d?\.[1-9]\d?(?![\d.])", s)
+    if not m:
+        return False
+
+    rest = s[m.end():]
+    if not rest.strip():
+        return True  # bare marker like "1.1"
+
+    title = rest.lstrip()
+    # A line-level heading is short and doesn't run on like a sentence.
+    if len(normalize_text(title)) > 72:
+        return False
+    if re.search(r"[。！？!?；;]", title):
+        return False
+
+    first = title[:1]
+    # Minimal grammatical fallback: a section number followed by a Chinese copula /
+    # measure word is a quantity, not a heading. This is a tiny grammar set, not a
+    # domain blacklist; it cannot cover every continuation, and that is accepted:
+    # single-line text without surrounding context is structurally ambiguous here.
+    if first in {"是", "为", "為", "倍"}:  # 是 为 為 倍
+        return False
+
+    if re.match(r"[A-Za-z]", first):
+        # Chinese no-space numeric headings are a real convention; English ones are not.
+        if not rest[:1].isspace():
+            return False
+        word = re.match(r"[A-Za-z]+", title)
+        first_word = word.group(0).lower() if word else ""
+        return first_word not in {"is", "are", "was", "were", "equals", "equal", "times", "fold"}
+
+    if re.match(r"[一-鿿]", first):
+        return True
+
+    return False
 
 
 def is_subsection(text: str) -> bool:

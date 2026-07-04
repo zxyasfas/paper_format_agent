@@ -83,6 +83,25 @@ class IEEESyntheticTests(unittest.TestCase):
         self.assertTrue(is_section("1.1研究背景"))
         self.assertTrue(is_section("2.3实验设置"))
 
+    def test_issue22_section_headings_vs_decimal_body_text(self):
+        # Real section headings stay True.
+        self.assertTrue(is_section("1.1研究背景"))
+        self.assertTrue(is_section("3.1  Experimental setup"))
+        self.assertTrue(is_section("2.3实验设置"))
+        self.assertTrue(is_section("A. Preparation of Papers"))
+        self.assertTrue(is_section("B."))
+        # Decimal-leading body text must NOT be misread as a heading (#22).
+        self.assertFalse(is_section("3.14是圆周率"))
+        self.assertFalse(is_section("2024.6数据统计"))
+        self.assertFalse(is_section("1.1倍增长"))
+
+    def test_issue22_numeric_section_marker_boundaries(self):
+        self.assertTrue(is_section("10.12  Ablation Study"))
+        self.assertTrue(is_section("3.14方法设计"))
+        self.assertFalse(is_section("3.14159 is pi"))
+        self.assertFalse(is_section("3.14 is pi"))
+        self.assertFalse(is_section("1.1.1"))
+
 
 if __name__ == "__main__":
     unittest.main()
