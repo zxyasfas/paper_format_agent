@@ -46,7 +46,7 @@ def normalize_text(text: str) -> str:
 def is_abstract_title(text: str) -> bool:
     # Strip whitespace, punctuation wrappers, and optional "\u4e2d\u6587" prefix.
     t = normalize_text(text)
-    t = re.sub(r"^[\uff08\uff09\[\]\u3010\u3011\uff08\uff09\uff1a:\s]+|[\uff08\uff09\[\]\u3010\u3011\uff08\uff09\uff1a:\s]+$", "", t)
+    t = re.sub(r"^[\uff08\uff09\[\]\u3010\u3011\uff3b\uff3d\u3014\u3015\u3016\u3017\uff1a:\s]+|[\uff08\uff09\[\]\u3010\u3011\uff3b\uff3d\u3014\u3015\u3016\u3017\uff1a:\s]+$", "", t)
     t = re.sub(r"^\u4e2d\u6587", "", t)  # strip \u4e2d\u6587 prefix
     return t == "\u6458\u8981"  # \u6458\u8981
 
@@ -60,7 +60,7 @@ def is_keyword_zh(text: str) -> bool:
     # match the common "关键词" / "关键字" label with an optional "中文" prefix
     # and optional trailing colon.
     t = normalize_text(text)
-    t = re.sub(r"^[（）\[\]【】（）：:\s]+|[（）\[\]【】（）：:\s]+$", "", t)
+    t = re.sub(r"^[（）\[\]【】［］〔〕〖〗：:\s]+|[（）\[\]【】［］〔〕〖〗：:\s]+$", "", t)
     t = re.sub(r"^中文", "", t)  # strip 中文 prefix
     return bool(re.match(r"^(关键词|关键字)(?:[:：]|$)", t))
 

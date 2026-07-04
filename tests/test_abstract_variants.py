@@ -25,6 +25,11 @@ class AbstractTitleVariantsTests(unittest.TestCase):
     def test_label_with_brackets(self):
         self.assertTrue(is_abstract_title("【摘要】"))  # 【摘要】
 
+    def test_label_with_other_bracket_variants(self):
+        self.assertTrue(is_abstract_title("［摘要］"))  # fullwidth square brackets
+        self.assertTrue(is_abstract_title("〔摘要〕"))  # tortoise-shell brackets
+        self.assertTrue(is_abstract_title("〖摘要〗"))  # black lenticular brackets
+
     def test_label_with_chinese_prefix(self):
         self.assertTrue(is_abstract_title("中文摘要"))  # 中文摘要
 
@@ -65,6 +70,11 @@ class KeywordZhVariantsTests(unittest.TestCase):
 
     def test_keyword_with_brackets(self):
         self.assertTrue(is_keyword_zh("【关键词】"))  # 【关键词】
+
+    def test_keyword_with_other_bracket_variants(self):
+        self.assertTrue(is_keyword_zh("［关键词］"))  # fullwidth square brackets
+        self.assertTrue(is_keyword_zh("〔关键词〕"))  # tortoise-shell brackets
+        self.assertTrue(is_keyword_zh("〖关键词〗"))  # black lenticular brackets
 
     def test_keyword_with_chinese_prefix(self):
         self.assertTrue(is_keyword_zh("中文关键词："))  # 中文关键词：
