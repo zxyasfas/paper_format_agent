@@ -8,9 +8,26 @@
 ![CI](https://github.com/zxyasfas/paper_format_agent/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-Paper Format Agent 是一个本地优先的论文格式修改工具，面向毕业论文、课程论文、期刊投稿和会议论文的 DOCX 格式整理场景。它会从格式说明中抽取规则，自动修复论文排版，并生成机器可读与人工可读的检查报告。
+**一个能证明自己没有改动论文正文的开源 DOCX 排版工具。**
 
-核心原则很简单：只改格式，不改学术内容。
+论文排版本质上就是改字体、缩进、行距这些格式元数据，但市面上的工具（论文无忧、WPS 论文排版、大以论文、AIPoliDoc 等）都是闭源云服务，你没法知道它在"顺手"改格式的同时有没有动你的措辞、删你的句子。Paper Format Agent 用内容指纹（content fingerprint）把这件事变成可验证的：排版前后对全文做哈希比对，不一致就拒绝输出。全程本地运行。它同时打包成了标准 Agent Skill（[SKILL.md](SKILL.md) + [agents/openai.yaml](agents/openai.yaml)），可以被 Claude Code / Codex CLI 等 agent 运行时直接安装调用。
+
+核心原则很简单：只改格式，不改学术内容——而且可以自己验证。
+
+## 不是承诺，是证据
+
+下面是一次真实运行 `format_report.json` 里的字段，不是示意：
+
+```json
+{
+  "content_fingerprint_before": "793e6533fd670418141d11fdcf014be19750408129ecff8b1b78a2641a3786db",
+  "content_fingerprint_after":  "793e6533fd670418141d11fdcf014be19750408129ecff8b1b78a2641a3786db",
+  "content_changed": false,
+  "content_guard_enforced": true
+}
+```
+
+排版前后指纹一致，用 python-docx 逐段比对正文文本也完全一致。同一次运行里，正文段落的字体从未设置变为宋体 12pt、首行缩进从无到 2 字符、对齐从无到两端对齐；摘要标题变为宋体 18pt 居中；关键词段落变为宋体 12pt 左对齐——格式实实在在改了，正文一个字没动。同一份报告也如实报出了它发现的真问题：`char_below_min`（正文低于格式要求的最低字数）和 `blank_page_risk`（可能存在的强制分页空白页），不会因为指纹一致就假装一切完美。
 
 ## 一屏了解
 

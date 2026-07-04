@@ -8,24 +8,37 @@
 ![CI](https://github.com/zxyasfas/paper_format_agent/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-Local-first academic paper formatting for DOCX files, packaged as both a Python tool and an agent skill.
+**An open-source DOCX formatter for academic papers that proves it never touched your text.**
 
-Paper Format Agent extracts formatting rules from a guide, applies deterministic DOCX repairs, and produces machine-readable plus human-readable reports. It is built for thesis, journal, and conference formatting workflows where privacy and content preservation matter.
+Paper Format Agent reformats a thesis or paper — fonts, indents, alignment, spacing, headings, captions — to match a target format guide, and it ships with a verifiable content fingerprint so you can confirm your actual academic writing came out byte-identical to how it went in. Everything runs locally on your machine. It's also packaged as an installable agent skill ([SKILL.md](SKILL.md) + [agents/openai.yaml](agents/openai.yaml)), so tools like Claude Code or Codex CLI can invoke it directly instead of a human clicking through a GUI.
 
-## Status
+## Proof, not a promise
 
-This project is a practical open-source MVP moving toward commercial readiness. It is suitable for demos, internal pilots, agent workflows, and synthetic benchmark development. Before paid production use, expand the regression corpus, template coverage, and object-level scoring for tables, figures, equations, footnotes, headers, and footers.
+Real fields from an actual run's `format_report.json`:
+
+```json
+{
+  "content_fingerprint_before": "793e6533fd670418141d11fdcf014be19750408129ecff8b1b78a2641a3786db",
+  "content_fingerprint_after":  "793e6533fd670418141d11fdcf014be19750408129ecff8b1b78a2641a3786db",
+  "content_changed": false,
+  "content_guard_enforced": true
+}
+```
+
+The before/after fingerprints match, and an independent paragraph-by-paragraph `.text` diff over the whole document confirms every word survived. What *did* change on that same file: body text went from unset font/indent/alignment to SimSun (宋体) 12pt, a 2-character first-line indent, and justified alignment; the abstract title became SimSun 18pt centered; keywords became SimSun 12pt left-aligned. The same run also reported the real problems it found — `char_below_min` (document under the guide's minimum length) and `blank_page_risk` — rather than silently claiming a perfect score.
 
 ## Why This Exists
 
-Academic formatting is tedious, repetitive, and hard to review manually. This project focuses on formatting-only automation:
+Every closed-source formatting service (论文无忧, WPS 论文排版, 大以论文, AIPoliDoc, and similar) asks you to *trust* that your content survives the reformatting pass — none of them let you verify it.
 
-- margins, fonts, line spacing, headings, captions, tables, and references
-- generated running headers and centered page-number footers
-- required section checks such as abstracts, keywords, and table of contents
-- content fingerprint guards to detect accidental academic content changes
-- local execution for private papers and school templates
-- reports that can be used by students, supervisors, reviewers, and CI
+- The content guard is the smallest honest promise: change the formatting, but not a single character of the text — and if that can't be confirmed, the run aborts with an error (`content guard failed`) instead of shipping a silently-altered document. It's fail-closed and enforced by default.
+- Open-source and auditable: read the code, or just diff the fingerprint yourself.
+- Formatting-only automation across margins, fonts, line spacing, headings, captions, tables, and references, plus required-section checks (abstracts, keywords, table of contents) and running headers / centered page-number footers.
+- Reports are usable by students, supervisors, reviewers, and CI.
+
+## Status
+
+This project is a practical open-source MVP. It is suitable for demos, internal pilots, agent workflows, and synthetic benchmark development. Before relying on it for high-stakes submissions, expand the regression corpus, template coverage, and object-level scoring for tables, figures, equations, footnotes, headers, and footers.
 
 ## Agent Skill
 
