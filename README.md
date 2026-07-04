@@ -8,13 +8,13 @@
 ![CI](https://github.com/zxyasfas/paper_format_agent/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-**An open-source DOCX formatter for academic papers that proves it never touched your text.**
+**An open-source DOCX formatter for academic papers that can prove it didn't rewrite your text.**
 
-Paper Format Agent reformats a thesis or paper — fonts, indents, alignment, spacing, headings, captions — to match a target format guide, and it ships with a verifiable content fingerprint so you can confirm your actual academic writing came out byte-identical to how it went in. Everything runs locally on your machine. It's also packaged as an installable agent skill ([SKILL.md](SKILL.md) + [agents/openai.yaml](agents/openai.yaml)), so tools like Claude Code or Codex CLI can invoke it directly instead of a human clicking through a GUI.
+Paper Format Agent reformats a thesis or paper — fonts, indents, alignment, spacing, headings, captions — to match a target format guide, and it ships with a verifiable content fingerprint so you can confirm the wording of your paper came out unchanged. It compares a fingerprint of your body and table text (with whitespace and stray bullet characters normalized out) before and after formatting; the run is **fail-closed**, so if that text changed it aborts instead of writing a file. Everything runs locally on your machine. It's also packaged as an installable agent skill ([SKILL.md](SKILL.md) + [agents/openai.yaml](agents/openai.yaml)), so tools like Claude Code or Codex CLI can invoke it directly instead of a human clicking through a GUI.
 
 ## Proof, not a promise
 
-Real fields from an actual run's `format_report.json`:
+Real fields from an actual run (`--engine python`, the fully-guarded path), taken from the produced `format_report.json`:
 
 ```json
 {
@@ -25,13 +25,13 @@ Real fields from an actual run's `format_report.json`:
 }
 ```
 
-The before/after fingerprints match, and an independent paragraph-by-paragraph `.text` diff over the whole document confirms every word survived. What *did* change on that same file: body text went from unset font/indent/alignment to SimSun (宋体) 12pt, a 2-character first-line indent, and justified alignment; the abstract title became SimSun 18pt centered; keywords became SimSun 12pt left-aligned. The same run also reported the real problems it found — `char_below_min` (document under the guide's minimum length) and `blank_page_risk` — rather than silently claiming a perfect score.
+The before/after fingerprints match, and a paragraph-by-paragraph `.text` comparison I ran across the whole document confirms every word survived. What *did* change on that same file: body text went from unset font/indent/alignment to SimSun (宋体) 12pt, a 2-character first-line indent, and justified alignment; the abstract title became SimSun 18pt centered; the Chinese keywords line became SimSun 12pt left-aligned. The same run also reported the real problems it found — `char_below_min` (document under the guide's minimum length) and `blank_page_risk` — rather than silently claiming a perfect score.
 
 ## Why This Exists
 
 Every closed-source formatting service (论文无忧, WPS 论文排版, 大以论文, AIPoliDoc, and similar) asks you to *trust* that your content survives the reformatting pass — none of them let you verify it.
 
-- The content guard is the smallest honest promise: change the formatting, but not a single character of the text — and if that can't be confirmed, the run aborts with an error (`content guard failed`) instead of shipping a silently-altered document. It's fail-closed and enforced by default.
+- The content guard is the smallest honest promise: change the formatting, but not the wording of your body and table text — and if that can't be confirmed, the run aborts with an error (`content guard failed`) instead of shipping a silently-altered document. It's fail-closed and enforced by default. (Scope: it normalizes whitespace and stray bullet characters before comparing, and covers body paragraphs and tables; headers and footers, which the formatter sets on purpose, are out of scope. The fully-guarded path is `--engine python`; other engines run a local post-processor, e.g. to refresh the table of contents, after the check.)
 - Open-source and auditable: read the code, or just diff the fingerprint yourself.
 - Formatting-only automation across margins, fonts, line spacing, headings, captions, tables, and references, plus required-section checks (abstracts, keywords, table of contents) and running headers / centered page-number footers.
 - Reports are usable by students, supervisors, reviewers, and CI.
