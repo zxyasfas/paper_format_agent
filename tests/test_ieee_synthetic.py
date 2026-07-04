@@ -72,6 +72,17 @@ class IEEESyntheticTests(unittest.TestCase):
         self.assertTrue(is_subsection("1.1.1"))
         self.assertTrue(is_subsection("2.3.4"))
 
+    def test_ieee_section_letter_style(self):
+        self.assertTrue(is_section("A. Preparation of Papers"))
+        self.assertTrue(is_section("B."))
+        self.assertFalse(is_section("A.Preparation"))
+
+    def test_section_numbered_no_space_chinese(self):
+        # Chinese thesis headings commonly omit the space after the number,
+        # e.g. "1.1研究背景" - this must keep matching after adding [A-Z]. support.
+        self.assertTrue(is_section("1.1研究背景"))
+        self.assertTrue(is_section("2.3实验设置"))
+
 
 if __name__ == "__main__":
     unittest.main()

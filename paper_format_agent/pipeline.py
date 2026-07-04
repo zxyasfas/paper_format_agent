@@ -115,7 +115,7 @@ def is_chapter(text: str) -> bool:
 
 def is_section(text: str) -> bool:
     s = (text or "").strip()
-    return bool(re.match(r"^\d+\.\d+(?!\.)\s*", s))
+    return bool(re.match(r"^(?:\d+\.\d+(?!\.)\s*|[A-Z]\.(?:\s+|$))", s))
 
 
 def is_subsection(text: str) -> bool:
