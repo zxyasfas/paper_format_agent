@@ -4,9 +4,6 @@ This roadmap is organized to create many small PR opportunities.
 
 ## Good First PRs
 
-- [ ] Add synthetic tests for IEEE-style heading and caption rules.
-- [ ] Add synthetic tests for APA-style reference spacing rules.
-- [ ] Add synthetic tests for Chinese thesis abstract and keyword variants.
 - [ ] Improve `format_report.html` wording for failed checks.
 - [ ] Add examples to `docs/regression_manifest.sample.json`.
 - [ ] Improve `SKILL.md` with more precise agent review steps.
@@ -18,16 +15,18 @@ descriptions, acceptance criteria, and suggested labels.
 
 These are intentionally small and useful PRs:
 
-- [ ] `tests`: APA reference spacing synthetic coverage.
-- [ ] `tests`: Chinese thesis abstract and keyword label variants.
 - [ ] `scoring`: figure caption diagnostics with actionable fixes.
 - [ ] `scoring`: table caption diagnostics with evidence fields.
 - [ ] `templates`: synthetic university thesis template pack.
 - [ ] `reporting`: clearer failed-check wording in HTML reports.
 - [ ] `ci`: optional GitHub Actions example for local format checks.
+- [ ] `pipeline`: disambiguate decimal-leading body text from section headings ([#22](https://github.com/zxyasfas/paper_format_agent/issues/22)).
 
 ## Recently Added
 
+- [x] IEEE-style `A.`/`B.` section headings and Roman-numeral table captions, with synthetic coverage.
+- [x] APA reference spacing regression coverage.
+- [x] Broader Chinese thesis label detection: abstract/keyword variants, `中文` prefixes, inter-character spaces, and fullwidth/tortoise-shell/lenticular bracket wrappers.
 - [x] Batch CLI for folders of papers.
 - [x] Release audit for tracked generated files, local scratch files, caches, and secret-like files.
 - [x] Privacy-safe template packs for Chinese thesis, journal article, and IEEE-style conference workflows.

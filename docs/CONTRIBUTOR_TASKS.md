@@ -18,32 +18,6 @@ files, screenshots with private data, API keys, or local output folders.
 
 ## Good First Issues
 
-### Add APA Reference Spacing Coverage
-
-User pain: reference formatting is one of the most common rejection reasons for
-course papers and journal submissions.
-
-Expected PR:
-
-- Add a short synthetic APA-style reference snippet.
-- Add or update a test that checks spacing, indentation, or paragraph style.
-- Keep the rule focused on references only.
-
-Suggested labels: `good first issue`, `tests`, `references`.
-
-### Add Chinese Thesis Abstract Keyword Variants
-
-User pain: Chinese thesis templates often use slightly different labels such as
-`关键词`, `关键字`, `Keywords`, or mixed Chinese/English abstract sections.
-
-Expected PR:
-
-- Add synthetic format-guide text covering two or three label variants.
-- Add a test proving the required section check recognizes them.
-- Do not add real school template text.
-
-Suggested labels: `good first issue`, `rule-request`, `tests`.
-
 ### Add Figure Caption Diagnostics
 
 User pain: users need to know which figure caption failed and what to change,
@@ -109,6 +83,14 @@ Expected PR:
 - Keep the example optional and local-first.
 
 Suggested labels: `help wanted`, `ci`, `docs`.
+
+## Recently Completed
+
+Thanks to the contributors who picked these up:
+
+- APA reference spacing regression coverage ([#16](https://github.com/zxyasfas/paper_format_agent/pull/16)).
+- IEEE-style heading and Roman-numeral table caption support with synthetic tests ([#9](https://github.com/zxyasfas/paper_format_agent/pull/9), [#20](https://github.com/zxyasfas/paper_format_agent/pull/20)).
+- Chinese thesis abstract and keyword label variants ([#19](https://github.com/zxyasfas/paper_format_agent/pull/19)).
 
 ## Larger Follow-Up Areas
 
