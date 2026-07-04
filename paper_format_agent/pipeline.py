@@ -164,7 +164,7 @@ def is_table_caption(text: str) -> bool:
         return False
     return bool(
         re.match(
-            r"^(\u8868|Table)\s*[0-9\u4e00-\u9fff.\-\uFF0D\u2014]+(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
+            r"^(\u8868|Table)\s*[0-9\u4e00-\u9fffIVXLCDM.\-\uFF0D\u2014]+(?:\s|[:\uff1a\uFF0E.\u3001]|$)",
             t,
             flags=re.IGNORECASE,
         )
