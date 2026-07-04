@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.zxyasfas/paper-format-agent -->
+
 # Paper Format Agent
 
 [中文说明](README.zh-CN.md) | English
@@ -51,6 +53,17 @@ The skill teaches an agent how to:
 - review `format_report.json`
 - validate changes before returning results
 - add new template rules with tests
+
+## MCP Server
+
+The same pipeline is also exposed as an optional [MCP](https://modelcontextprotocol.io) server, so Claude Code, Codex CLI, or any MCP client can call it directly (requires Python 3.10+):
+
+```bash
+pip install "paper-format-agent[mcp]"
+paper-format-agent-mcp
+```
+
+Tools: `format_paper` (content-guarded reformat), `extract_format_rules`, and `score_paper` (read-only). See [docs/MCP.md](docs/MCP.md) for the client config and tool reference.
 
 ## Quick Start
 

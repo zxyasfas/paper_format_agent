@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paper-format-agent"
+version = "3.1.0"
+description = "Local-first DOCX formatter for academic papers with a content-fingerprint guard that proves the text was left untouched — only the formatting changed."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "zxyasfas" }]
+keywords = [
+    "docx",
+    "academic-writing",
+    "thesis",
+    "document-formatting",
+    "content-integrity",
+    "mcp",
+    "agent-skill",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "python-docx>=1.1.2",
+    "lxml>=5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/zxyasfas/paper_format_agent"
+Repository = "https://github.com/zxyasfas/paper_format_agent"
+Issues = "https://github.com/zxyasfas/paper_format_agent/issues"
+
+[project.optional-dependencies]
+# The MCP server exposes the formatter as MCP tools. The MCP SDK needs Python >= 3.10.
+mcp = ["mcp>=1.2.0"]
+# The langgraph-based agent workflow used by some advanced flows.
+agent = ["langgraph>=0.2.0"]
+
+[project.scripts]
+paper-format-agent = "paper_format_agent.cli:main"
+paper-format-agent-mcp = "paper_format_agent.mcp_server:main"
+
+[tool.setuptools]
+packages = ["paper_format_agent"]
+
+[tool.setuptools.package-data]
+paper_format_agent = ["*.md"]

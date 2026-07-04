@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.zxyasfas/paper-format-agent",
+  "description": "Local-first DOCX formatter for academic papers with a content-fingerprint integrity guard.",
+  "repository": {
+    "url": "https://github.com/zxyasfas/paper_format_agent",
+    "source": "github"
+  },
+  "version": "3.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "paper-format-agent",
+      "version": "3.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
