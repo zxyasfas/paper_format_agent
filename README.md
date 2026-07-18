@@ -44,6 +44,9 @@ a synthetic paper, then repeats the run with the styling step patched to edit
 one sentence of the in-memory document. The second run aborts without writing
 the DOCX.
 
+[docs/BENCHMARK.md](docs/BENCHMARK.md) tracks which authored strings survive
+a run in small synthetic fixtures, and lists the known gaps.
+
 ## install and run
 
 ```bash
