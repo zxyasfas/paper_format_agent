@@ -3,10 +3,12 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
+import paper_format_agent.pipeline as pipeline_module
 from paper_format_agent.pipeline import run_pipeline
 from paper_format_agent.rules import extract_rules_from_text
 
@@ -91,6 +93,41 @@ class PipelineContentGuardTests(unittest.TestCase):
                 self.assertEqual(reference_paragraph.paragraph_format.space_after.pt, 0.0)
 
             self.assertFalse(result.content_changed)
+
+    def test_pipeline_aborts_when_styling_step_changes_text(self):
+        with TemporaryDirectory() as td:
+            td_path = Path(td)
+            src = td_path / "input.docx"
+            out = td_path / "out.docx"
+
+            doc = Document()
+            doc.add_paragraph("一、绪论")
+            doc.add_paragraph("这是正文第一段。")
+            doc.save(src)
+
+            real_styles = pipeline_module.apply_final_styles_from_markers
+
+            def styles_that_also_edit_text(document, rules):
+                count = real_styles(document, rules)
+                for p in document.paragraphs:
+                    if "正文第一段" in p.text:
+                        p.text = p.text.replace("第一段", "第1段")
+                        break
+                return count
+
+            rules = extract_rules_from_text("正文宋体小四，1.25倍行距。")
+            with patch.object(
+                pipeline_module,
+                "apply_final_styles_from_markers",
+                styles_that_also_edit_text,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    r"^content guard failed: non-whitespace content changed$",
+                ):
+                    run_pipeline(src, out, rules, enforce_content_guard=True)
+
+            self.assertFalse(out.exists())
 
 
 if __name__ == "__main__":

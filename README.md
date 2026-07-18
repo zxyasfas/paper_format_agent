@@ -39,6 +39,11 @@ scope because the formatter sets those on purpose. Use `--engine python` when
 the fingerprint must cover the final saved DOCX; the other engines run a local
 post-processor after the check, e.g. to refresh the table of contents.
 
+To watch the guard trip, run `python tools/demo_content_guard.py`. It formats
+a synthetic paper, then repeats the run with the styling step patched to edit
+one sentence of the in-memory document. The second run aborts without writing
+the DOCX.
+
 ## install and run
 
 ```bash
