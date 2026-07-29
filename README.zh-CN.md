@@ -64,6 +64,10 @@ python -m paper_format_agent.cli \
 `--strict-required-sections` 时，报告里可能出现 `char_below_min`、
 `blank_page_risk` 这类检查项。正式提交前别把它当唯一检查，留好原文件。
 
+参考文献的格式不归它管：那部分是机械规则，单独做了个工具
+[gbt7714_check](https://github.com/zxyasfas/gbt7714_check)，按 GB/T 7714
+逐条查参考文献表，和这边的排版正好分工。
+
 ## 为什么做这个
 
 我不想把没写完的论文传到排版网站上，也想有个办法确认排版没动过正文。所以

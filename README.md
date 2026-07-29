@@ -70,6 +70,11 @@ equations, footnotes and complex layouts. With `--strict-required-sections`,
 checks may include `char_below_min` or `blank_page_risk`. Do not use it as the
 only check before a real submission. Keep your original file.
 
+Reference-list formatting is out of scope here: that part is mechanical
+rules, so it lives in a separate tool,
+[gbt7714_check](https://github.com/zxyasfas/gbt7714_check), which lints
+reference entries against GB/T 7714.
+
 ## why I made this
 
 I did not want to upload an unfinished thesis to a formatting website, and I
