@@ -8,9 +8,9 @@
 ![Python](https://img.shields.io/badge/python-3.9%2B-3776AB)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-本地运行的 DOCX 论文排版工具。
+本地运行的 DOCX 论文自动排版工具，适用于毕业论文、学位论文的 Word 格式修改。
 
-它按格式要求改字体、缩进、行距、标题和题注，不改论文内容。保存前会对比
+它按论文格式要求改字体字号、缩进、行距、标题和题注，不改论文内容。保存前会对比
 排版前后正文和表格文字的指纹，文字变了就直接报错退出，不写出排版后的文件。
 
 全程在本机运行，不上传任何文件。
@@ -79,7 +79,7 @@ pip install "paper-format-agent[mcp]"
 paper-format-agent-mcp
 ```
 
-工具：`format_paper`、`extract_format_rules`、`score_paper`。客户端配置见
+工具：`format_paper`（排版）、`extract_format_rules`（从格式要求文档提取规则）、`score_paper`（格式检查评分）。客户端配置见
 [docs/MCP.md](docs/MCP.md)。
 
 ## 参与
