@@ -7,11 +7,13 @@ from pathlib import Path
 from typing import Any
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from .pipeline import (
     MARK_PREFIX,
     is_abstract_title,
     is_english_abstract_title,
+    is_figure_caption,
     is_keyword_en,
     is_keyword_zh,
     looks_like_toc_entry,
@@ -129,6 +131,12 @@ DIAGNOSTIC_CATALOG: dict[str, dict[str, str]] = {
         "summary": "Document length is below the minimum required by the format guide.",
         "suggested_fix": "Verify whether the format guide's minimum character count applies to this manuscript.",
     },
+    "figure_caption_align": {
+        "category": "template_rules",
+        "severity": "medium",
+        "summary": "One or more figure captions are not aligned as the format guide requires.",
+        "suggested_fix": "Re-center each figure caption listed in the evidence (paragraph index and caption text) to match the figure_caption alignment rule.",
+    },
 }
 
 
@@ -182,6 +190,7 @@ def _diagnostic_evidence(name: str, features: dict[str, Any]) -> dict[str, Any]:
         "blank_page_risk": ["blank_page_risk"],
         "content_loss_vs_baseline": ["baseline_chars_no_space", "chars_ratio_vs_baseline"],
         "char_below_min": ["chars_no_space", "min_chars"],
+        "figure_caption_align": ["figure_caption_align"],
     }
     return {key: features.get(key) for key in keys_by_name.get(name, [])}
 
@@ -237,6 +246,19 @@ def _page_break_blank_risk(doc: Document) -> int:
         if seen > 0 and collected < 50:
             risk += 1
     return risk
+
+
+def _figure_caption_align_issues(doc: Document, expect_name: str) -> list[dict[str, Any]]:
+    """List figure-caption paragraphs whose alignment does not match the format rule."""
+    expect = getattr(WD_ALIGN_PARAGRAPH, str(expect_name).upper(), WD_ALIGN_PARAGRAPH.CENTER)
+    issues: list[dict[str, Any]] = []
+    for i, p in enumerate(doc.paragraphs):
+        t = (p.text or "").strip()
+        if not t or not is_figure_caption(t):
+            continue
+        if p.alignment != expect:
+            issues.append({"idx": i, "text": t[:80]})
+    return issues
 
 
 def _prefix_toc_stats(doc: Document, idx_abs: int | None) -> dict[str, float]:
@@ -368,6 +390,8 @@ def score_document(
     blank_risk = _page_break_blank_risk(doc)
     prefix_toc = _prefix_toc_stats(doc, idx_abs)
     toc_heading_leak = _toc_heading_leak(doc, idx_toc)
+    caption_align_name = str(rules.get("figure_caption", {}).get("align", "center"))
+    figure_caption_align_issues = _figure_caption_align_issues(doc, caption_align_name)
 
     penalties: list[dict[str, Any]] = []
 
@@ -405,6 +429,8 @@ def score_document(
         penalties.append({"name": "toc_heading_leak", "value": min(24, toc_heading_leak * 2)})
     if blank_risk > 0:
         penalties.append({"name": "blank_page_risk", "value": min(15, blank_risk * 3)})
+    if figure_caption_align_issues:
+        penalties.append({"name": "figure_caption_align", "value": min(12, len(figure_caption_align_issues) * 2)})
 
     # Default mode checks content preservation, not absolute length thresholds.
     if baseline_chars is not None and baseline_chars > 0:
@@ -468,6 +494,7 @@ def score_document(
         "prefix_toc_like_ratio_before_abs": round(float(prefix_toc["toc_like_ratio"]), 3),
         "prefix_manual_toc_before_abs": bool(prefix_toc["is_manual_toc"]),
         "min_chars": min_chars,
+        "figure_caption_align": figure_caption_align_issues,
     }
 
     return {
