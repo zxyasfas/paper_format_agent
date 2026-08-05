@@ -1,4 +1,5 @@
 {
+  "_about": "Synthetic regression manifest for Paper Format Agent. Each entry points at fake fixture names only; no real papers or private templates. The 'note' field is informational and ignored by tools/regression_runner.py. Replace fixture paths with your own synthetic .docx files before running.",
   "cases": [
     {
       "name": "synthetic_thesis_case",
@@ -9,7 +10,55 @@
       "require_content_unchanged": true,
       "require_engine_success": true,
       "min_score_after": 90,
-      "min_score_improvement": 3
+      "min_score_improvement": 3,
+      "note": "Baseline synthetic thesis: formatting must finish on the python engine, keep the body text unchanged, and lift the score by at least 3 points to stay at or above 90."
+    },
+    {
+      "name": "synthetic_journal_strict_sections",
+      "format_file": "examples/fixtures/synthetic_journal_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_journal_paper.docx",
+      "engine": "python",
+      "strict_required_sections": true,
+      "require_content_unchanged": true,
+      "require_engine_success": true,
+      "min_score_after": 85,
+      "min_score_improvement": 2,
+      "note": "Journal-style case with strict required-section enforcement (abstract, keywords, headings). Expected output: required sections present, score_after >= 85, score_improvement >= 2, content_changed == false."
+    },
+    {
+      "name": "synthetic_ieee_conference_case",
+      "format_file": "examples/fixtures/synthetic_ieee_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_ieee_paper.docx",
+      "engine": "python",
+      "strict_required_sections": true,
+      "require_content_unchanged": true,
+      "require_engine_success": true,
+      "min_score_after": 90,
+      "min_score_improvement": 5,
+      "note": "IEEE-style conference: tight formatting rules. Expected output: score_after >= 90, score jumps by at least 5 points while leaving prose untouched."
+    },
+    {
+      "name": "synthetic_toc_refresh_case",
+      "format_file": "examples/fixtures/synthetic_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_toc_paper.docx",
+      "engine": "word-com",
+      "strict_required_sections": false,
+      "allow_content_change": true,
+      "require_content_unchanged": false,
+      "require_engine_success": true,
+      "min_score_after": 80,
+      "note": "Shows an opt-in case: the word-com engine refreshes the table of contents, so content_changed may be true and require_content_unchanged must be disabled. Only the score_after floor is enforced."
+    },
+    {
+      "name": "synthetic_minimal_reliability_case",
+      "format_file": "examples/fixtures/synthetic_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_paper.docx",
+      "engine": "python",
+      "strict_required_sections": false,
+      "require_content_unchanged": false,
+      "require_engine_success": true,
+      "min_score_after": 60,
+      "note": "Minimal reliability guard: only requires the engine to succeed and produce a report with score_after >= 60. No content/improvement constraints."
     }
   ]
 }

@@ -94,6 +94,31 @@ paper-format-agent-mcp
 Tools: `format_paper`, `extract_format_rules`, `score_paper`. Client config in
 [docs/MCP.md](docs/MCP.md).
 
+## regression manifest
+
+[`docs/regression_manifest.sample.json`](docs/regression_manifest.sample.json)
+declares synthetic end-to-end checks for the formatter. Each case names a fake
+fixture, optional strict flags, and expected score thresholds. It is a sample
+only: it references fixture names that you create locally, never real papers or
+private templates. The `note` field explains each case and is ignored by the
+runner.
+
+To run the regression suite against fixtures you have created:
+
+```bash
+python tools/regression_runner.py \
+  --manifest docs/regression_manifest.sample.json \
+  --out-dir ./regression_out
+```
+
+Expected output: a `regression_summary.json` in `--out-dir` with one result per
+case (`ok`, `score_before`, `score_after`, `content_changed`, `failed_checks`).
+A case passes when it exits 0, the engine reported success, content stayed
+unchanged (unless `allow_content_change`), and the score thresholds hold. The
+command exits 0 only if every case passes. You must validate the JSON yourself
+(`python -c "import json; json.load(open('docs/regression_manifest.sample.json'))"`)
+because the sample contains documentation notes, not code comments.
+
 ## contributing
 
 Small PRs are welcome. Adding a synthetic test for a school or journal
