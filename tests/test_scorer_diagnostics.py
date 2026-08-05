@@ -70,9 +70,40 @@ class ScorerDiagnosticsTests(unittest.TestCase):
             saved = json.loads(out_json.read_text(encoding="utf-8"))
             html = out_html.read_text(encoding="utf-8")
             self.assertEqual(saved["diagnostics"][0]["name"], "missing_zh_abs")
-            self.assertIn("Actionable diagnostics", html)
-            self.assertIn("Suggested fix", html)
+            self.assertIn("哪个检查没通过、如何修复", html)
+            self.assertIn("修复建议", html)
+            self.assertIn("缺少中文摘要", html)
             self.assertIn("missing_zh_abs", html)
+            self.assertIn("严重", html)
+
+    def test_save_reports_human_readable_check_labels_and_category_hints(self):
+        with TemporaryDirectory() as td:
+            out_html = Path(td) / "format_report.html"
+            report = {
+                "score": 60,
+                "raw_quality_score": 60,
+                "chars_no_space": 100,
+                "features": {},
+                "penalties": [],
+                "diagnostics": [
+                    {
+                        "name": "char_below_min",
+                        "category": "template_rules",
+                        "severity": "medium",
+                        "penalty": 8,
+                        "summary": "Document length is below the minimum.",
+                        "suggested_fix": "Verify the character count.",
+                        "evidence": {},
+                    }
+                ],
+            }
+
+            save_reports(report, Path(td) / "format_report.json", out_html)
+
+            html = out_html.read_text(encoding="utf-8")
+            self.assertIn("字数未达到格式指南下限", html)
+            self.assertIn("对照格式指南逐条核对该项规则的要求", html)
+            self.assertIn("中等", html)
 
 
 if __name__ == "__main__":

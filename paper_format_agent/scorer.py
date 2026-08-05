@@ -132,6 +132,48 @@ DIAGNOSTIC_CATALOG: dict[str, dict[str, str]] = {
 }
 
 
+CHECK_LABELS: dict[str, str] = {
+    "missing_zh_abs": "缺少中文摘要",
+    "missing_zh_keywords": "缺少中文关键词",
+    "missing_en_abs": "缺少英文摘要",
+    "missing_en_keywords": "缺少英文关键词",
+    "missing_toc_title": "缺少目录标题",
+    "abstract_after_body": "摘要位于正文之后",
+    "prefix_manual_toc_before_abs": "手动目录位于摘要之前",
+    "en_abs_before_zh_abs": "英文摘要位于中文摘要之前",
+    "kw_zh_before_abs": "中文关键词位于中文摘要之前",
+    "kw_en_before_en_abs": "英文关键词位于英文摘要之前",
+    "toc_after_body": "目录位于正文之后",
+    "numpr_left": "段落残留 Word 编号元数据",
+    "marker_left": "残留内部标记样式",
+    "heading_body_leak": "长文本被误设为标题样式",
+    "toc_heading_leak": "目录项仍使用标题样式",
+    "blank_page_risk": "可能存在空白页",
+    "content_loss_vs_baseline": "排版后内容疑似减少",
+    "char_below_min": "字数未达到格式指南下限",
+}
+
+CATEGORY_HINTS: dict[str, str] = {
+    "required_sections": "对照格式指南，检查开头是否缺少摘要、关键词、目录等必需部分，补上后再重跑。",
+    "front_matter_order": "检查摘要、关键词、目录与正文的相对顺序，按指南把前置部分移到正文之前。",
+    "docx_numbering": "检查是否残留 Word 自动编号；给受影响段落换成统一的段落样式。",
+    "internal_cleanup": "检查文档是否残留内部标记样式，通常需要重新执行一次格式化。",
+    "style_leak": "检查是否把长正文段落或目录项误设为标题样式。",
+    "layout": "检查分页设置，避免出现过稀或空白的页面。",
+    "content_preservation": "逐段对比输入与输出文档，确认内容没有被改动或删除。",
+    "template_rules": "对照格式指南逐条核对该项规则的要求。",
+    "uncategorized": "该检查暂未归入已知类别，建议对照格式指南人工复核。",
+}
+
+SEVERITY_LABELS: dict[str, str] = {
+    "high": "严重",
+    "medium": "中等",
+    "low": "较低",
+    "pass": "通过",
+    "info": "提示",
+}
+
+
 def _unknown_diagnostic_severity(value: int | float) -> str:
     if value >= 15:
         return "high"
@@ -489,19 +531,24 @@ def save_reports(report: dict[str, Any], out_json: str | Path, out_html: str | P
     rows = []
     for p in report.get("penalties", []):
         rows.append(
-            f"<tr><td>{escape(str(p['name']))}</td><td>-{escape(str(p['value']))}</td></tr>"
+            f"<tr><td>{escape(CHECK_LABELS.get(str(p['name']), str(p['name'])))}</td>"
+            f"<td>-{escape(str(p['value']))}</td></tr>"
         )
     diagnostics = report.get("diagnostics")
     if diagnostics is None:
         diagnostics = build_diagnostics(report.get("penalties", []), report.get("features", {}))
     diag_rows = []
     for item in diagnostics:
+        name = str(item.get("name", ""))
+        category = str(item.get("category", ""))
+        severity = str(item.get("severity", ""))
         diag_rows.append(
             "<tr>"
-            f"<td>{escape(str(item.get('severity', '')))}</td>"
-            f"<td>{escape(str(item.get('name', '')))}</td>"
+            f"<td><span class='sev sev-{escape(severity)}'>{escape(SEVERITY_LABELS.get(severity, severity))}</span></td>"
+            f"<td>{escape(CHECK_LABELS.get(name, name))}<br/><span class='code'>{escape(name)}</span></td>"
             f"<td>{escape(str(item.get('summary', '')))}</td>"
-            f"<td>{escape(str(item.get('suggested_fix', '')))}</td>"
+            f"<td>{escape(str(item.get('suggested_fix', '')))}<br/>"
+            f"<span class='hint'>{escape(CATEGORY_HINTS.get(category, ''))}</span></td>"
             "</tr>"
         )
     feat_rows = []
@@ -551,27 +598,36 @@ def save_reports(report: dict[str, Any], out_json: str | Path, out_html: str | P
         score_display = f"{report['score']}"
 
     html = (
-        "<!doctype html><html><head><meta charset='utf-8'><title>V3质量评分</title>"
+        "<!doctype html><html><head><meta charset='utf-8'><title>论文格式质量评分报告</title>"
         "<style>"
         "body{font-family:Arial,'Microsoft YaHei';max-width:1000px;margin:24px auto;line-height:1.6;background:#f5f5f5}"
         ".container{background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}"
         "table{border-collapse:collapse;width:100%;margin:15px 0}"
-        "td,th{border:1px solid #ddd;padding:10px;text-align:left}"
+        "td,th{border:1px solid #ddd;padding:10px;text-align:left;vertical-align:top;word-break:break-word}"
         "th{background:#f5f5f5;font-weight:bold}"
         "tr:hover{background:#f9f9f9}"
         "h1{color:#333;border-bottom:3px solid #667eea;padding-bottom:15px}"
         "h2{color:#555;margin-top:30px}"
         ".score-box{display:inline-block;padding:15px 30px;background:#667eea;color:white;border-radius:8px;font-size:24px;font-weight:bold}"
+        ".sev{display:inline-block;padding:2px 10px;border-radius:10px;color:white;font-size:12px;font-weight:bold;white-space:nowrap}"
+        ".sev-high{background:#e74c3c}.sev-medium{background:#f39c12}.sev-low{background:#95a5a6}"
+        ".sev-pass{background:#27ae60}.sev-info{background:#3498db}"
+        ".code{font-family:monospace;font-size:11px;color:#888}"
+        ".hint{display:block;margin-top:6px;font-size:12px;color:#777;border-left:3px solid #667eea;padding-left:8px}"
+        ".check-confirmed{background:#f0f9eb;border:1px solid #cce5b4;padding:12px 16px;border-radius:8px}"
         "</style></head><body>"
         "<div class='container'>"
         "<h1>🎓 论文格式质量评分报告</h1>"
         + comparison_html +
         f"<p><b>最终得分：</b><span class='score-box'>{score_display}</span> / 100</p>"
         f"<p><b>原始质量分：</b>{report.get('raw_quality_score', report['score'])}</p>"
-        "<h2>⚠️ 扣分项</h2><table><tr><th>项</th><th>扣分</th></tr>"
+        "<h2>⚠️ 扣分项</h2><table><tr><th>检查项</th><th>扣分</th></tr>"
         + "".join(rows)
         + "</table>"
-        + "<h2>Actionable diagnostics</h2><table><tr><th>Severity</th><th>Check</th><th>Problem</th><th>Suggested fix</th></tr>"
+        + "<h2>📋 检查明细：哪个检查没通过、如何修复</h2>"
+        "<p class='tip'>下表按严重程度列出未通过的格式检查：每行先说明 \"查的是什么\"，"
+        "再告知\"下一步怎么做\"。</p>"
+        "<table><tr><th>严重程度</th><th>检查项</th><th>问题说明</th><th>修复建议</th></tr>"
         + "".join(diag_rows)
         + "</table>"
         + "<h2>📋 特征详情</h2><table><tr><th>项</th><th>值</th></tr>"
