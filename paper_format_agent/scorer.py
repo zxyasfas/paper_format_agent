@@ -14,6 +14,7 @@ from .pipeline import (
     is_english_abstract_title,
     is_keyword_en,
     is_keyword_zh,
+    is_table_caption,
     looks_like_toc_entry,
     is_toc_title,
     normalize_text,
@@ -129,6 +130,12 @@ DIAGNOSTIC_CATALOG: dict[str, dict[str, str]] = {
         "summary": "Document length is below the minimum required by the format guide.",
         "suggested_fix": "Verify whether the format guide's minimum character count applies to this manuscript.",
     },
+    "missing_table_caption": {
+        "category": "caption",
+        "severity": "medium",
+        "summary": "A table has no table caption on the paragraph directly above it.",
+        "suggested_fix": "Add a numbered table caption line immediately above each table, for example '表 1 ...' or 'Table 1. ...', matching the numbering style required by the format guide.",
+    },
 }
 
 
@@ -182,6 +189,7 @@ def _diagnostic_evidence(name: str, features: dict[str, Any]) -> dict[str, Any]:
         "blank_page_risk": ["blank_page_risk"],
         "content_loss_vs_baseline": ["baseline_chars_no_space", "chars_ratio_vs_baseline"],
         "char_below_min": ["chars_no_space", "min_chars"],
+        "missing_table_caption": ["table_caption_evidence"],
     }
     return {key: features.get(key) for key in keys_by_name.get(name, [])}
 
@@ -307,6 +315,49 @@ def _toc_heading_leak(doc: Document, idx_toc: int | None) -> int:
     return heading_like
 
 
+def _table_caption_evidence(doc: Document) -> list[dict[str, Any]]:
+    """
+    For each top-level table in the document, check whether the nearest
+    preceding non-empty paragraph reads as a table caption. Returns one
+    evidence entry per table that lacks such a caption.
+    """
+    from docx.oxml.ns import qn
+
+    body = doc.element.body
+    order: list[tuple[str, int]] = []
+    p_idx = 0
+    t_idx = 0
+    for child in body.iterchildren():
+        if child.tag == qn("w:p"):
+            order.append(("p", p_idx))
+            p_idx += 1
+        elif child.tag == qn("w:tbl"):
+            order.append(("tbl", t_idx))
+            t_idx += 1
+
+    paragraphs = list(doc.paragraphs)
+    issues: list[dict[str, Any]] = []
+    for i, (kind, num) in enumerate(order):
+        if kind != "tbl":
+            continue
+        nearest_p: tuple[int, str] | None = None
+        for j in range(i - 1, -1, -1):
+            prev_kind, prev_num = order[j]
+            if prev_kind != "p":
+                continue
+            text = (paragraphs[prev_num].text or "").strip()
+            if text:
+                nearest_p = (prev_num, text)
+                break
+        if nearest_p is None:
+            issues.append({"table_index": num, "idx": None, "text": ""})
+            continue
+        prev_num, prev_text = nearest_p
+        if not is_table_caption(prev_text):
+            issues.append({"table_index": num, "idx": prev_num, "text": prev_text[:60]})
+    return issues
+
+
 def score_document(
     docx_path: str | Path,
     rules: dict,
@@ -368,6 +419,7 @@ def score_document(
     blank_risk = _page_break_blank_risk(doc)
     prefix_toc = _prefix_toc_stats(doc, idx_abs)
     toc_heading_leak = _toc_heading_leak(doc, idx_toc)
+    table_caption_evidence = _table_caption_evidence(doc)
 
     penalties: list[dict[str, Any]] = []
 
@@ -405,6 +457,10 @@ def score_document(
         penalties.append({"name": "toc_heading_leak", "value": min(24, toc_heading_leak * 2)})
     if blank_risk > 0:
         penalties.append({"name": "blank_page_risk", "value": min(15, blank_risk * 3)})
+    if table_caption_evidence:
+        penalties.append(
+            {"name": "missing_table_caption", "value": min(20, len(table_caption_evidence) * 6)}
+        )
 
     # Default mode checks content preservation, not absolute length thresholds.
     if baseline_chars is not None and baseline_chars > 0:
@@ -468,6 +524,7 @@ def score_document(
         "prefix_toc_like_ratio_before_abs": round(float(prefix_toc["toc_like_ratio"]), 3),
         "prefix_manual_toc_before_abs": bool(prefix_toc["is_manual_toc"]),
         "min_chars": min_chars,
+        "table_caption_evidence": table_caption_evidence,
     }
 
     return {
