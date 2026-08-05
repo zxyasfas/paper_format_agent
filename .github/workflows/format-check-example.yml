@@ -1,0 +1,101 @@
+# ---------------------------------------------------------------------------
+# EXAMPLE workflow for running a local format check on SYNTHETIC fixtures only.
+#
+# Privacy warning
+# ----------------
+# This workflow never touches real theses, papers, or private school/journal
+# templates. It builds a fake paper and a fake format guide from scratch inside
+# a temporary directory, formats it, then checks that the content guard kept
+# every sentence unchanged.
+#
+# Do NOT copy real files here. Do NOT upload generated DOCX/PDF or the output
+# folder as artifacts or as commits. Everything stays on the machine; nothing
+# from the run is stored long-term.
+#
+# This file is optional and easy to drop into any local-first repository:
+# copy it, adjust the package name, and run it to see the CLI work.
+# ---------------------------------------------------------------------------
+
+name: Local format check (example)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format-check:
+    name: Format synthetic paper and verify content guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run a local format check on synthetic fixtures
+        # All paths below are FAKE. The paper and format guide are generated
+        # in a scratch directory and deleted before the job ends. They must
+        # not be committed and must not be uploaded as artifacts.
+        shell: python
+        run: |
+          import json
+          import shutil
+          import subprocess
+          import tempfile
+          from pathlib import Path
+
+          from docx import Document
+
+          scratch = Path(tempfile.mkdtemp(prefix="pfa-ci-"))
+
+          # 1) Build a synthetic, fake paper (never a real thesis).
+          paper = scratch / "paper.docx"
+          doc = Document()
+          doc.add_paragraph("摘要")
+          doc.add_paragraph("这是合成论文的摘要内容，仅用于演示，不含任何真实稿件。")
+          doc.add_paragraph("关键词：合成；演示；格式")
+          doc.add_paragraph("一、绪论")
+          doc.add_paragraph("这是合成正文第一段，用于验证格式化前后内容完全不变。")
+          doc.save(paper)
+
+          # 2) Build a synthetic format guide from a fake rule snippet.
+          guide = scratch / "format_guide.txt"
+          guide.write_text("正文宋体小四，1.25倍行距。", encoding="utf-8")
+
+          # 3) Run the local formatter on those fake paths only.
+          out_dir = scratch / "output"
+          subprocess.check_call(
+              [
+                  "python",
+                  "-m",
+                  "paper_format_agent.cli",
+                  "--format-file", str(guide),
+                  "--paper-file", str(paper),
+                  "--out-dir", str(out_dir),
+                  "--engine", "python",
+              ]
+          )
+
+          # 4) Verify the content guard protected every sentence.
+          report = json.loads((out_dir / "format_report.json").read_text(encoding="utf-8"))
+          assert report.get("content_changed") is False, report
+          assert report.get("content_guard_enforced") is True, report
+          print("content_changed=", report["content_changed"])
+          print("content_guard_enforced=", report["content_guard_enforced"])
+
+          # 5) Everything above used fake data. Clean up the scratch output so
+          # no generated DOCX/PDF or reports are left on the runner.
+          shutil.rmtree(scratch, ignore_errors=True)
+          print("OK: synthetic format check passed and scratch output removed.")

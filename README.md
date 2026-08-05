@@ -105,6 +105,16 @@ formatting rule is a good place to start:
 Do not commit real papers, private school templates, reviewer comments, API
 keys or generated output. Synthetic fixtures only.
 
+## Optional CI example: local format check
+
+[.github/workflows/format-check-example.yml](.github/workflows/format-check-example.yml)
+is an optional, easy-to-copy GitHub Actions example. It builds a fake paper and
+a fake format guide from scratch, runs the local CLI on those synthetic paths
+only, and asserts that the content guard reports `content_changed: false`. It
+never commits or uploads real papers or generated DOCX/PDF output. Copy it into
+any local-first repository (adjusting the package name) to see the pipeline run
+without handling private material.
+
 ## license
 
 MIT. See [LICENSE](LICENSE).
