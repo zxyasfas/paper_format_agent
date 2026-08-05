@@ -11,6 +11,7 @@ The presets are intentionally stored as JSON so they can be reviewed, copied, an
 | `chinese-thesis-basic.json` | Chinese undergraduate or graduate thesis | Includes Chinese abstract, keywords, TOC, figure/table captions, headers, and page-number footers. |
 | `journal-article-basic.json` | Journal article submission | Uses tighter margins, Times New Roman English text, required English abstract and keywords. |
 | `ieee-conference-basic.json` | IEEE-style conference paper | Provides a compact two-column-oriented rule baseline for future layout support. |
+| `synthetic-university-thesis-basic.json` | Fictional university thesis (English) | Uses a made-up institution (Northwind University) as a generic, privacy-safe starting point to adapt into a school-specific template. |
 
 ## How To Add A Template
 
