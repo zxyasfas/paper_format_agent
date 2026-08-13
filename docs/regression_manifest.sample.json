@@ -10,6 +10,43 @@
       "require_engine_success": true,
       "min_score_after": 90,
       "min_score_improvement": 3
+    },
+    {
+      "name": "minimal_paper_case",
+      "format_file": "examples/fixtures/synthetic_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_paper.docx",
+      "engine": "python",
+      "strict_required_sections": false,
+      "require_content_unchanged": true,
+      "require_engine_success": true,
+      "min_score_after": 50,
+      "min_score_improvement": 1,
+      "validation_command": "python -m paper_format_agent.cli --format examples/fixtures/synthetic_format_guide.docx --paper examples/fixtures/synthetic_paper.docx --output /tmp/test_output"
+    },
+    {
+      "name": "strict_sections_case",
+      "format_file": "examples/fixtures/synthetic_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_paper.docx",
+      "engine": "python",
+      "strict_required_sections": true,
+      "require_content_unchanged": true,
+      "require_engine_success": true,
+      "min_score_after": 80,
+      "min_score_improvement": 2,
+      "validation_command": "python -m paper_format_agent.cli --format examples/fixtures/synthetic_format_guide.docx --paper examples/fixtures/synthetic_paper.docx --strict-sections --output /tmp/test_output"
+    },
+    {
+      "name": "no_engine_case",
+      "format_file": "examples/fixtures/synthetic_format_guide.docx",
+      "paper_file": "examples/fixtures/synthetic_paper.docx",
+      "engine": "none",
+      "strict_required_sections": false,
+      "require_content_unchanged": true,
+      "require_engine_success": false,
+      "min_score_after": 40,
+      "min_score_improvement": 0,
+      "validation_command": "python -m paper_format_agent.cli --format examples/fixtures/synthetic_format_guide.docx --paper examples/fixtures/synthetic_paper.docx --no-engine --output /tmp/test_output",
+      "expected_output": "format_report.json with score >= 40 and no engine_report.json"
     }
   ]
 }

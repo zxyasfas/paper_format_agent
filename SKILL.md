@@ -65,11 +65,13 @@ python tools/release_audit.py
 
 Read `format_report.json` first, then inspect `format_report.html` if the user needs a human-readable summary. Prioritize issues in this order:
 
-1. Content changed unexpectedly.
-2. Required sections or headings were misclassified.
-3. Page setup, margins, fonts, or line spacing are wrong.
-4. Captions, references, tables, or numbering look wrong.
-5. Report wording or score explanation is unclear.
+1. **Content guard**: Check `content_changed` and `content_guard_enforced` in `format_report.json`. If `content_changed` is `true` and the user did not opt in, investigate immediately — this is the highest priority failure.
+2. **Required sections**: Verify `penalties` for missing or misclassified sections. Cross-check with the format guide's section list.
+3. **Page setup**: Inspect margins, font size, and line spacing values in the `features` dict. Compare against extracted rules in `format_rules.json`.
+4. **Captions and references**: Look for penalty entries related to captions, tables, or numbering. Check `diagnostics` for suggested fixes.
+5. **Score clarity**: If the score explanation is unclear, check `raw_quality_score` vs `score` to understand penalty impact.
+
+For each failure found, follow the `suggested_fix` in the `diagnostics` table before re-running the formatter.
 
 ## Contribution-Friendly Tasks
 
