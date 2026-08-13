@@ -564,17 +564,17 @@ def save_reports(report: dict[str, Any], out_json: str | Path, out_html: str | P
         ".score-box{display:inline-block;padding:15px 30px;background:#667eea;color:white;border-radius:8px;font-size:24px;font-weight:bold}"
         "</style></head><body>"
         "<div class='container'>"
-        "<h1>🎓 论文格式质量评分报告</h1>"
+        "<h1>📄 Format Quality Score Report</h1><p><em>Review the penalties and diagnostics below to understand what failed and what to fix next.</em></p>"
         + comparison_html +
-        f"<p><b>最终得分：</b><span class='score-box'>{score_display}</span> / 100</p>"
-        f"<p><b>原始质量分：</b>{report.get('raw_quality_score', report['score'])}</p>"
-        "<h2>⚠️ 扣分项</h2><table><tr><th>项</th><th>扣分</th></tr>"
+        f"<p><b>Final Score:</b> <span class='score-box'>{score_display}</span> / 100</p>"
+        f"<p><b>Raw Quality Score:</b> {report.get('raw_quality_score', report['score'])}</p>"
+        "<h2>⚠️ Penalties — What Failed</h2><table><tr><th>Check</th><th>Points Deducted</th></tr>"
         + "".join(rows)
         + "</table>"
-        + "<h2>Actionable diagnostics</h2><table><tr><th>Severity</th><th>Check</th><th>Problem</th><th>Suggested fix</th></tr>"
+        + "<h2>🔧 Diagnostics — What to Fix Next</h2><table><tr><th>Severity</th><th>Check</th><th>Problem</th><th>Suggested Fix</th></tr>"
         + "".join(diag_rows)
         + "</table>"
-        + "<h2>📋 特征详情</h2><table><tr><th>项</th><th>值</th></tr>"
+        + "<h2>📋 Feature Details</h2><table><tr><th>Feature</th><th>Value</th></tr>"
         + "".join(feat_rows)
         + "</table></div></body></html>"
     )
